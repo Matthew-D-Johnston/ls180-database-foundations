@@ -1,4 +1,4 @@
-##### LS180 Database Foundations > Launch School Bookshelf > Introduction to SQL
+##### LS180 Database Foundations > Launch School Bookshelf > Introduction to SQ
 
 ---
 
@@ -424,5 +424,207 @@ conservation_status char(2)
    );
    ```
 
-   
+
+### Alter Table Syntax
+
+* Existing tables can be altered with an `ALTER TABLE` statement. An `ALTER TABLE` statement is part of DDL, and is for altering a table **schema** only ; we'll look at updating _data_ in a table later in this book.
+
+* The basic format of an `ALTER TABLE` statement is:
+
+  ```
+  > ALTER TABLE table_to_change HOW TO CHANGE THE TABLE additional arguments
+  ```
+
+### Renaming a Table
+
+* We can rename a table using the `RENAME` clause.
+
+  ```sql
+  sql_book=# ALTER TABLE users
+  sql_book=# RENAME TO all_users;
+  ```
+
+### Renaming a Column
+
+* `RENAME` can also be used to rename a column. But we need to include a `COLUMN` clause in between the `RENAME` and `TO` clauses.
+
+  ```sql
+  sql_book=# ALTER TABLE all_users
+  sql_book-# RENAME COLUMN username TO full_name;
+  ```
+
+### Changing a Column's Datatype
+
+* To change a column's datatype we again use the `ALTER TABLE` statement, but this time in conjunction with `ALTER COLUMN` to target a specific column for change. In the statement below, the datatype of `full_name` is changed from `char(25)` to `varchar(25)`. 
+
+  ```sql
+  sql_book=# ALTER TABLE all_users
+  sql_book-# ALTER COLUMN full_name TYPE varchar(25);
+  ```
+
+### Adding a Constraint
+
+* Constraints are a little different from the other changes we have been making in that rather than changing them we add them to, or remove them from, the column definition. Another difference with constraints is that whereas a column can only have one name and one datatype, it can have more than one constraint.
+
+* The syntax for adding constraints can vary depending on the type of constraint we're adding. Some types of constraint are considered 'table constraints' (even if they apply to a specific column) and others, such as `NOT NULL` are considered 'column constraints'.
+
+* The form for adding a column constraint is as follows:
+
+  ```
+  > ALTER TABLE table_name ALTER COLUMN column_name SET constraint clause
+  ```
+
+* Whereas the form for adding a table constraint is:
+
+  ```
+  > ALTER TABLE table_name ADD CONSTRAINT constraint_name constraint clause
+  ```
+
+* We'll look at this second form a bit later, for now let's add a `NOT NULL` constraint to our `full_name` column.
+
+  ```sql
+  sql_book=# ALTER TABLE all_users
+  sql_book-# ALTER COLUMN full_name SET NOT NULL;
+  ```
+
+### Removing a Constraint
+
+* Just as we can add constraints to a table after creating it, we may also remove them. The syntax is the same for both column and table constraints:
+
+  ```sql
+  ALTER TABLE table_name DROP CONSTRAINT constraint_name
+  ```
+
+* When we used a specified data type of `serial` for our `id` column, this automatically added a `DEFAULT` clause that uses the `nextval` function to set `id` to the next available value if no value is specified. This is quite a useful set-up for our `id` column, as we'll see later when we start adding data to our table. If we did want to remove the `DEFAULT` clause, it's not technically a constraint, so the syntax is a little different:
+
+  ```sql
+  sql_book=# ALTER TABLE all_users
+  sql_book-# ALTER COLUMN id DROP DEFAULT;
+  ```
+
+### Adding a Column
+
+* There may be situations were you need to add an entirely new column.
+
+* If you need to add a column to the table you've created, one that was not specified in the original schema, you can use an `ADD COLUMN` clause in an `ALTER TABLE` statement.
+
+* Run this command in your psql console and follow along to see how the database changes.
+
+  ```sql
+  ALTER TABLE all_users
+  	ADD COLUMN last_login timestamp NOT NULL DEFAULT NOW();
+  ```
+
+* Note: `NOW()` is a SQL function. It provides the current date and time when it is called. There are many such functions available and we will look at some of the common ones in subsequent chapters.
+
+### Removing a Column
+
+* The command to remove a column from a table also uses the `ALTER TABLE` clause. Say for example we wanted to remove the `enabled` column from the `all_users` table.
+
+  ```sql
+  sql_book=# ALTER TABLE all_users DROP COLUMN enabled;
+  ```
+
+### Dropping Tables
+
+* Deleting a table has a relatively straightforward command and the syntax for deleting a table is much like the command for dropping a database, `DROP`. Run the statement and command below on your psql console. If you try to `describe` the deleted table, you will get an error.
+
+  ```sql
+  sql_book=# DROP TABLE all_users;
+  ```
+
+### Summary of Commands
+
+* Although the SQL statements for all of these actions use the same initial `ALTER TABLE` clause, the specific syntax for each varies according to the action.
+
+| Action                           | Command                                                      | Notes                                                        |
+| :------------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------- |
+| Add a column to a table          | ALTER TABLE table_name ADD COLUMN column_name data_type CONSTRAINTS; | Alters a table by adding a column with a specified data type and optional constraints. |
+| Alter a column's data type       | ALTER TABLE table_name ALTER COLUMN column_name TYPE data_type; | Alters the table by changing the datatype of column.         |
+| Rename a table                   | ALTER TABLE table_name RENAME TO new_table_name;             | Changes the name of a table in the currently connected to database. |
+| Rename a column within a table   | ALTER TABLE table_name RENAME COLUMN column_name TO new_column_name; | Renames a column of the specified table.                     |
+| Add column constraint            | ALTER TABLE table_name ALTER COLUMN column_name SET constraint clause; | Adds a specified constraint to the specified table column.   |
+| Add table constraint             | ALTER TABLE table_name ADD CONSTRAINT constraint_name constraint clause; | Adds a specified constraint to the specified table.          |
+| Remove a column constraint       | ALTER TABLE table_name ALTER COLUMN column_name DROP CONSTRAINT; | Removes a constraint from the specified table.               |
+| Remove a table constraint        | ALTER TABLE table_name DROP CONSTRAINT constraint_name;      | Removes a constraint from the specified table.               |
+| Remove a column from a table     | ALTER TABLE table_name DROP COLUMN column_name               | Removes a column from the specified table.                   |
+| Delete a table from the database | DROP TABLE table_name;                                       | Permanently deletes the specified table from its database.   |
+
+### Exercises
+
+1. Make sure you are connected to the `encyclopedia` database. Rename the `famous_people` table to `celebrities`.
+
+   ```sql
+   ALTER TABLE famous_people
+   RENAME TO celebrities;
+   ```
+
+2. Change the name of the `name` column in the `celebrities` table to `first_name`, and change its data type to `varchar(80)`.
+
+   ```sql
+   ALTER TABLE celebrities
+   RENAME COLUMN name TO first_name;
+   ```
+
+   ```sql
+   ALTER TABLE celebrities
+   ALTER COLUMN first_name TYPE varchar(80);
+   ```
+
+3. Create a new column in the `celebrities` table called `last_name`. It should be able to hold strings of lengths up to 100 characters. This column should always hold a value.
+
+   ```sql
+   ALTER TABLE celebrities
+   ADD COLUMN last_name varchar(100) NOT NULL;
+   ```
+
+4. Change the `celebrities` table so that the `date_of_birth` column uses a data type that holds an actual date value rather than a string. Also ensure that this column must hold a value.
+
+   ```sql
+   ALTER TABLE celebrities
+   	ALTER COLUMN date_of_birth TYPE date
+   		USING date_of_birth::date,
+   	ALTER COLUMN date_of_birth SET NOT NULL;
+   ```
+
+5. Change the `max_weight_kg` column in the `animals` table so that it can hold values in the range 0.0001kg to 200,000kg.
+
+   ```sql
+   ALTER TABLE animals
+   ALTER COLUMN max_weight_kg TYPE decimal(10,4);
+   ```
+
+6. Change the `animals` table so that the `binomial_name` column cannot contain duplicate values.
+
+   ```sql
+   ALTER TABLE animals
+   ADD CONSTRAINT unique_binomial_name UNIQUE (binomial_name); 
+   ```
+
+7. Connect to the `ls_burger` database. Add the following columns to the `orders` table:
+
+   * A column called `customer_email`; it should hold strings of up to 50 characters.
+   * A column called `customer_loyalty_points` that should hold integer values. If no value is specified for this column, then a value of `0` should be applied.
+
+   ```sql
+   ALTER TABLE orders
+   ADD COLUMN customer_email varchar(50),
+   ADD COLUMN customer_loyalty_points integer DEFAULT 0;
+   ```
+
+8. Add three columns to the `orders` table called `burger_cost`, `side_cost`, and `drink_cost` to hold monetary values in dollars and cents (assume that all values will be less than $100). If no value is entered for these columns, a value of `0` dollars should be used.
+
+   ```sql
+   ALTER TABLE orders
+   ADD COLUMN burger_cost decimal(4,2) DEFAULT 0,
+   ADD COLUMN side_cost decimal(4,2) DEFAULT 0,
+   ADD COLUMN drink_cost decimal(4,2) DEFAULT 0;
+   ```
+
+9. Remove the `order_total` column from the `orders` table.
+
+   ```sql
+   ALTER TABLE orders
+   DROP COLUMN order_total;
+   ```
 
