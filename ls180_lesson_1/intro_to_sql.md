@@ -1273,3 +1273,498 @@ VALUES ('James Bergman', 'james1998@email.com', 'LS Chicken Burger', 'Fries', 'C
 ('Aaron Muller', NULL, 'LS Burger', NULL, NULL, 3.00, DEFAULT, DEFAULT, 10);
 ```
 
+### Select Queries
+
+* In the previous chapter we used `INSERT` to add some data to our `users` table. Now that our table contains data, we can use `SELECT` to access, or _query_, that data in various ways. Querying data forms the **Read** part of our **CRUD** operations, and is arguably the most common operation in database-backed applications.
+
+### Select Query Syntax
+
+* Let's start by breaking down the `SELECT` statement into individual generalized parts, as we've done for SQL statements in previous chapters.
+
+  ```sql
+  SELECT [*, (column_name1, column_name2, ...)]
+  FROM table_name WHERE (condition);
+  ```
+
+##### Identifiers and Keywords
+
+* In a SQL statement such as `SELECT enabled, full_name FROM users;` there are _identifiers_ and _keywords_. The identifiers, such as `enabled`, `full_name`, and `users`, identify tables or columns within a table. The keywords, such as `SELECT` and `FROM`, tell PostgreSQL to do something specific.
+* Since SQL is not a case-sensitive language, the case differences in our example can't be used by PostgreSQL to differentiate between identifiers and keywords. Instead it assumes that anything which is not a keyword (or operator, or function) is an identifier and so treats it as such. What do we do if we want to use an identifier that is the same as a keyword? For example, we might have a column called `year`, which is actually a reserved word in PostgreSQL. If used in certain SQL statements, depending on the context, this identifier would cause an error.
+* Generally it's best to try and avoid naming columns the same as keywords for this very reason. If it's unavoidable however, you can double quote the identifier in your statement, like so `"year"`. PostgreSQL then knows to treat it specifically as an identifier rather than as a keyword.  
+
+### Order By
+
+* `ORDER BY` displays the results of a query in a particular sort order.
+* SQL allows returning sorted data by adding the `ORDER BY column_name` clause to a query. Let's add to our `SELECT` query syntax example within an `ORDER BY` clause.
+
+```sql
+SELECT [*, (column_name1, column_name2, ...)]
+FROM table_name WHERE (condition)
+ORDER BY column_name;
+```
+
+* You can fine tune your ordering with the `ORDER BY` clause by specifying the sort direction, either _ascending_ or _descending_, using keywords `ASC` or `DESC`. If omitted, then the default is `ASC`, which is why our previous query was sorted by `enabled` in _ascending_ order.
+* You can fine tune your ordering even further by returning results ordered by more than one column. This is done by having comma-separated expressions in the `ORDER BY` clause. If we add `id DESC` to our `ORDER BY` clause, the rows will first be ordered by `enabled` as in our previous example, but then _within_ any sets of rows which have identical values for `enabled` a second level of ordering will be applied, this time by `id` in descending order.
+
+### Operators
+
+* Operators are generally used as part of an expression in a `WHERE` clause. We'll briefly look at a few different operators and how to use them as part of a `SELECT` query by grouping some of them into the following different types:
+  1. Comparison
+  2. Logical
+  3. String Matching
+* The operators we discuss below are only a selection of those available within PostgreSQL; they do however represent some of the most commonly used operators and fundamental use cases that you will encounter.
+
+###### Comparison Operators
+
+* These operators are used to compare one value to another. Often these values are numerical, but other data types can also be compared. Examples of comparison operator would be 'less than' `<` or 'not equal' `<>` (both of which we've already encountered).
+* Within the expression of a `WHERE` clause, the comparison operator is placed in between the two things being compared; i.e. the column name and the specific value to be compared against the values in that column.
+* Let's look at an example, using the 'greater than or equal to' operator `>=`.
+
+```sql
+SELECT full_name, enabled, last_login FROM users WHERE id >= 2;
+```
+
+* Some other comparison operators that work in a similar way are listed below:
+
+| Operator     | Description              |
+| :----------- | :----------------------- |
+| `<`          | less than                |
+| `>`          | greater than             |
+| `<=`         | less than or equal to    |
+| `>=`         | greater than or equal to |
+| `=`          | equal                    |
+| `<>` or `!=` | not equal                |
+
+* As well as the comparison operators listed above, there are what is termed _comparison predicates_ which behave much like operators but have special syntax. Examples include `BETWEEN`, `NOT BETWEEN`, `IS DISTINCT FROM`, `IS NOT DISTINCT FROM`. We won't discuss these in this book, though there are two important ones which we will briefly cover: `IS NULL` and `IS NOT NULL`.
+
+* `NULL` is a special value in SQL which actually represents an **unknown value**. Don't worry too much about the finer details of what this means for now, we'll explore this some more later in the curriculum. On a practical level though, what this means is that we can't simply treat `NULL` as we would any other value. We couldn't, for example, have a `WHERE` clause in the form `WHERE column_name = NULL`. When identifying `NULL` values we must instead use the `IS NULL` comparison predicate.
+
+  ```sql
+  SELECT * FROM my_table WHERE my_column IS NULL;
+  ```
+
+* The above example would select all rows for which the column `my_column` had a `NULL` value.
+* Using `IS NOT NULL` would do the opposite; i.e. it would select all rows for which the column had any value _other than_ `NULL`.
+
+###### Logical Operators
+
+* Logical operators can be used to provide more flexibility to your expressions. There are three logical operators:
+
+  1. `AND`
+  2. `OR`
+  3. `NOT`
+
+* The third one, `NOT` is less commonly used than the other two, so we won't cover it here. The `AND` and `OR` operators allow you to combine multiple conditions in a single expression. Let's try them out with some quick examples:
+
+  ```sql
+  SELECT * FROM users WHERE full_name = 'Harry Potter' OR enabled = 'false';
+  ```
+
+* The above statement should retrieve two rows. This is because there is one row where the value of `full_name` is `"Harry Potter"` and so matches the first condition, and another row where `enabled` is `false` and so matches the second condition. Since by using `OR` we are interested in rows that satisfy **either** condition, both of these rows should be returned. The other row in our table didn't satisfy either of the conditions and so shouldn't be returned.
+* If we use `AND` we are saying that we are only interested in rows that satisfy **both** conditions. Since there are no rows where `full_name` is `"Harry Potter"` and `enabled` is also `false`, no rows satisfy our overall condition and so `0` rows are returned.
+
+###### String Matching Operators
+
+* String, or pattern, matching allows you to add flexibility to your conditional expressions in another way, by searching for a sub-set of the data within a column. For instance, let's say we wanted to find all users with the last name Smith. We can't directly check if `full_name` is equal to Smith, since Smith is only part of the entire name. We need a way to look at a substring within the entire name. As the name suggests, string matching can only be done when the data type of the column is a string type. It is most often carried out using the `LIKE` operator. Let's try it out by using our `full_name` example:
+
+  ```sql
+  sql_book=# SELECT * FROM users WHERE full_name LIKE '%Smith';
+  ```
+
+* Our `WHERE` clause here looks very much like other `WHERE` clauses we've seen so far in this book, except where the `=` operator would normally be, we use the `LIKE` operator instead. Also notice the use of the `%` character in the value that we want to match against; this is a wildcard character. By putting `%` just before Smith we are saying: Match all users that have a full name with any number of characters followed by "Smith".
+* As well as the `%` character, the underscore `_` can also be used as a wildcard with `LIKE`, however `_` stands in for only a _single_ character whereas `%` stands in for _any number_ of characters.
+* An alternative to `LIKE` for pattern matching is to use `SIMILAR TO`. It works in much the same way as `LIKE`, except that it compares the target column to a Regex (Regular Expression) pattern. 
+
+### Summary of `SELECT` Clauses
+
+| SELECT Clause                            | Notes                                                        |
+| :--------------------------------------- | :----------------------------------------------------------- |
+| ORDER BY column_name [ASC, DESC]         | Orders the data selected by a column name within the associated table. Data can be ordered in descending or ascending order; if neither are specified, the query defaults to ascending order. |
+| WHERE column_name [>,=, <=, =, <>] value | Filters a query result based on some comparison between a column's value and a specified literal value. There are several comparison operators available for use, from "greater than" to "not equal to". |
+| WHERE expression1 [AND, OR] expression2  | Filters a query result based whether one expression is true [and,or] another expression is true. |
+| WHERE string_column LIKE '%substring'    | Filters a query result based on whether a substring is contained within string_column's data and has any number of characters before that substring. Those characters are matched using the wildcard `%`. `%` doesn't have to come before a substring, you can also put it after one as well, matching the substring first and then any number of characters after that substring. |
+
+### Exercises
+
+1. Make sure you are connected to the `encyclopedia` database. Write a query to retrieve the population of the USA.
+
+   ```sql
+   SELECT population FROM countries
+   WHERE name = 'USA';
+   ```
+
+2. Write a query to return the population and the capital (with the columns in that order) of all the countries in the table.
+
+   ```sql
+   SELECT population, capital FROM countries;
+   ```
+
+3. Write a query to return the names of all the countries ordered alphabetically.
+
+   ```sql
+   SELECT name
+   FROM countries
+   ORDER BY name ASC;
+   ```
+
+4. Write a query to return the names and the capitals of all the countries in order of population, from lowest to highest.
+
+   ```sql
+   SELECT name, capital
+   FROM countries
+   ORDER BY population;
+   ```
+
+5. Write a query to return the same information as the previous query, but ordered from highest to lowest.
+
+   ```sql
+   SELECT name, capital
+   FROM countries
+   ORDER BY population DESC;
+   ```
+
+6. Write a query on the `animals` table, using `ORDER BY`, that will return the following output:
+
+   ```
+        name       |      binomial_name       | max_weight_kg | max_age_years
+   ------------------+--------------------------+---------------+---------------
+    Peregrine Falcon | Falco Peregrinus         |        1.5000 |            15
+    Pigeon           | Columbidae Columbiformes |        2.0000 |            15
+    Dove             | Columbidae Columbiformes |        2.0000 |            15
+    Golden Eagle     | Aquila Chrysaetos        |        6.3500 |            24
+    Kakapo           | Strigops habroptila      |        4.0000 |            60
+   (5 rows)
+   ```
+
+   Use only the columns that can be seen in the above output for ordering purposes.
+
+   ```sql
+   SELECT name, binomial_name, max_weight_kg, max_age_years
+   FROM animals
+   ORDER BY max_age_years, max_weight_kg, name DESC;
+   ```
+
+7. Write a query that returns the names of all the countries with a population greater than 70 million.
+
+   ```sql
+   SELECT name
+   FROM countries
+   WHERE population > 70000000;
+   ```
+
+8. Write a query that returns the names of all the countries with a population greater than 70 million but less than 200 million.
+
+   ```sql
+   SELECT name
+   FROM countries
+   WHERE population > 70000000 AND population < 200000000;
+   ```
+
+9. Write a query that will return the first name and last name of all entries in the celebrities table where the value of the deceased columns is not true.
+
+   ```sql
+   SELECT first_name, last_name
+   FROM celebrities
+   WHERE deceased <> true OR deceased IS NULL;
+   ```
+
+10. Write a query that will return the first and last names of all the celebrities who sing.
+
+    ```sql
+    SELECT first_name, last_name
+    FROM celebrities
+    WHERE occupation LIKE '%singer%';
+    ```
+
+11. Write a query that will return the first and last names of all the celebrities who act.
+
+    ```sql
+    SELECT first_name, last_name
+    FROM celebrities
+    WHERE occupation LIKE '%act%';
+    ```
+
+12. Write a query that will return the first and last names of all the celebrities who both sing and act.
+
+    ```sql
+    SELECT first_name, last_name
+    FROM celebrities
+    WHERE (occupation LIKE '%actor%' AND occupation LIKE '%singer%')
+    OR (occupation LIKE '%actress%' AND occupation LIKE '%singer%');
+    ```
+
+13. Connect to the `ls_burger` database. Write a query that lists all of the burgers that have been ordered, from cheapest to most expensive, where the cost of the burger is less than $5.00.
+
+    ```sql
+    SELECT burger
+    FROM orders
+WHERE burger_cost < 5.00
+    ORDER BY burger_cost;
+    ```
+    
+
+14. Write a query to return the customer name and email address and loyalty points from any order worth 20 or more loyalty points. List the results from the highest number of points to the lowest.
+
+    ```sql
+    SELECT customer_name, customer_email, customer_loyalty_points
+    FROM orders
+    WHERE customer_loyalty_points >= 20
+    ORDER BY customer_loyalty_points DESC;
+    ```
+
+15. Write a query that returns all the burgers ordered by Natasha O'Shea.
+
+    ```sql
+    SELECT burger
+    FROM orders
+    WHERE customer_name = 'Natasha O''Shea';
+    ```
+
+16. Write a query that returns the customer name from any order which does not include a drink item.
+
+    ```sql
+    SELECT customer_name
+    FROM orders
+    WHERE drink IS NULL;
+    ```
+
+17. Write a query that returns the three meal items for any order which does not include fries.
+
+    ```sql
+    SELECT burger, side, drink
+    FROM orders
+    WHERE side <> 'Fries' OR side IS NULL;
+    ```
+
+18. Write a query that returns the three meal items for any order that includes both a side and a drink.
+
+    ```sql
+    SELECT burger, side, drink
+    FROM orders
+    WHERE side IS NOT NULL AND drink IS NOT NULL;
+    ```
+
+### LIMIT and OFFSET
+
+* Displaying portions of data as separate 'pages' is a user interface pattern used in many web applications, generally referred to as 'pagination'. An example of this can be seen in the Launch School forum pages, where twelve forum posts are displayed on the first 'page' and you need to navigate to the next 'page' to see the next twelve.
+
+* The `LIMIT` and `OFFSET` clauses of `SELECT` are the base on which pagination is built. Let's look at how it works.
+
+* Example:
+
+  ```sql
+  SELECT * FROM users LIMIT 1 OFFSET 1;
+  
+   id |  full_name   | enabled |         last_login
+  ----+--------------+---------+----------------------------
+    2 | Jane Smith   | t       | 2017-10-25 10:26:50.295461
+  (1 row)
+  ```
+
+  
+
+### DISTINCT
+
+* Sometimes duplicate data is unavoidable. For example, we might get duplication when joining more than one table together. We'll delve into working with multiple tables later in this book, for now let's look at a way to deal with duplication by using the `DISTINCT` qualifier.
+
+* After adding some duplicate data to our `users` table, if we select the `full_name` column from the table, we get five rows back, two of which contain duplicate names.
+
+  ```sql
+  sql_book=# SELECT full_name FROM users;
+  
+   full_name
+  --------------
+   John Smith
+   Jane Smith
+   Harry Potter
+   Harry Potter
+   Jane Smith
+  (5 rows)
+  ```
+
+  
+
+* We can use `DISTINCT` as part of our `SELECT` query to only return distinct, or unique, values.
+
+  ```sql
+  SELECT DISTINCT full_name FROM users;
+  
+   full_name
+  --------------
+   John Smith
+   Jane Smith
+   Harry Potter
+  (3 rows)
+  ```
+
+### Functions
+
+* Functions are a way of working with data in SQL that may seem a little more familiar if you're coming to SQL from a programming language such as Ruby or JavaScript. Functions are a set of commands included as part of the RDBMS that perform particular operations on fields or data. Some functions provide data transformations that can be applied before returning results. Others simply return information on the operations carried out.
+* These functions can generally be grouped into different types. Some of the most commonly used types of functions are:
+  1. String
+  2. Date/Time
+  3. Aggregate
+
+###### String Functions
+
+* String Functions, as their name suggests, perform some sort of operation on values whose data type is String. Some examples are:
+
+| Function | Example                                               | Notes                                                        |
+| :------- | :---------------------------------------------------- | :----------------------------------------------------------- |
+| `length` | `SELECT length(full_name) FROM users;`                | This returns the length of every user's name. You could also use `length` in a `WHERE` clause to filter data based on name length. |
+| `trim`   | `SELECT trim(leading ' ' from full_name) FROM users;` | If any of the data in our `full_name` column had a space in front of the name, using the `trim` function like this would remove that leading space. |
+
+###### Date/ Time Functions
+
+Just as string functions perform operations on String data, Date/ Time functions, for the most part, perform operations on date and time data. Many of the date/ time functions take time or timestamp inputs. Our `last_login` column, for example, has a data type of `timestamp` and so data in that column can act as an argument to such functions:
+
+| Function    | Example                                                      | Notes                                                        |
+| :---------- | :----------------------------------------------------------- | :----------------------------------------------------------- |
+| `date_part` | `SELECT full_name, date_part('year', last_login) FROM users;` | `date_part` allow us to view a table that only contains a part of a user's timestamp that we specify. The above query allows us to see each user's name along with the year of the `last_login` date. Sometimes having date/time data down to the second isn't needed |
+| `age`       | `SELECT full_name, age(last_login) FROM users;`              | The `age` function, when passed a single `timestamp` as an argument, calculates the time elapsed between that timestamp and the current time. The above query allows us to see how long it has been since each user last logged in. |
+
+###### Aggregate Functions
+
+Aggregate functions perform _aggregation_; that is, they compute a single result from a set of input values. We briefly looked at one of these, `count`, a little earlier in this chapter.
+
+| Function | Example                              | Notes                                                        |
+| :------- | :----------------------------------- | :----------------------------------------------------------- |
+| `count`  | `SELECT count(id) FROM users;`       | Returns the number of values in the column passed in as an argument. This type of function can be very useful depending on the context. We could find the number of users who have enabled account, or even how many users have certain last names if we use the above statement with other clauses. |
+| `sum`    | `SELECT sum(id) FROM users;`         | Not to be confused with `count`. This *sums* numeric type values for all of the selected rows and returns the total. |
+| `min`    | `SELECT min(last_login) FROM users;` | This returns the lowest value in a column for all of the selected rows. Can be used with various data types such as numeric, date/ time, and string. |
+| `max`    | `SELECT max(last_login) FROM users;` | This returns the highest value in a column for all of the selected rows. Can be used with various data types such as numeric, date/ time, and string. |
+| `avg`    | `SELECT avg(id) FROM users;`         | Returns the average (arithmetic mean) of numeric type values for all of the selected rows. |
+
+* Aggregate functions really start to be useful when grouping table rows together. The way we do that is by using the `GROUP BY` clause.
+
+### GROUP BY
+
+* Sometimes you need to combine data results together to form more meaningful information.
+
+  ```sql
+  sql_book=# SELECT enabled, count(id) FROM users GROUP BY enabled;
+  
+   enabled | count
+  ---------+-------
+   f       |     1
+   t       |     4
+  (2 rows)
+  ```
+
+### Summary
+
+* In this chapter we've built on our knowledge of `SELECT`, and looked at a number of different ways we can make our `SELECT` queries more flexible and powerful:
+  - Returning portions of a dataset using `LIMIT` and `OFFSET`
+  - Returning unique values using `DISTINCT`
+  - Using SQL functions to work with data in various ways
+  - Aggregating data using `GROUP BY`
+
+### Exercises
+
+1. Make sure you are connected to the `encyclopedia` database. Write a query to retrieve the first row of data from the `countries` table.
+
+   ```sql
+   SELECT * FROM countries LIMIT 1;
+   ```
+
+2. Write a query to retrieve the name of the country with the largest population.
+
+   ```sql
+   SELECT name FROM countries
+   ORDER BY population DESC
+   LIMIT 1;
+   ```
+
+3. Write a query to retrieve the name of the country with the second largest population.
+
+   ```sql
+   SELECT name FROM countries
+   ORDER BY population DESC
+   LIMIT 1 OFFSET 1;
+   ```
+
+4. Write a query to retrieve all of the unique values from the `binomial_name` column of the `animals` table.
+
+   ```sql
+   SELECT DISTINCT binomial_name FROM animals;
+   ```
+
+5. Write a query to return the longest binomial name from the `animals` table.
+
+   ```sql
+   SELECT binomial_name FROM animals
+   ORDER BY length(binomial_name) DESC
+   LIMIT 1;
+   ```
+
+6. Write a query to return the first name of any celebrity born in 1958.
+
+   ```sql
+   SELECT first_name
+   FROM celebrities
+   WHERE date_part('year', date_of_birth) = 1958;
+   ```
+
+7. Write a query to return the highest maximum age from the `animals` table.
+
+   ```sql
+   SELECT max_age_years
+   FROM animals
+   ORDER BY max_age_years DESC
+   LIMIT 1;
+   
+   or 
+   
+   SELECT max(max_age_years)
+   FROM animals;
+   ```
+
+8. Write a query to return the average maximum weight from the `animals` table.
+
+   ```sql
+   SELECT avg(max_weight_kg) FROM animals;
+   ```
+
+9. Write a query to return the number of rows in the `countries` table.
+
+   ```sql
+   SELECT count(id) FROM countries;
+   ```
+
+10. Write a query to return the total population of all the countries in the `countries` table.
+
+    ```sql
+    SELECT sum(population) FROM countries;
+    ```
+
+11. Write a query to return each unique conversation status code alongside the number of animals that have that code.
+
+    ```sql
+    SELECT conservation_status, count(conservation_status)
+    FROM animals
+    GROUP BY conservation_status;
+    ```
+
+12. Connect to the `ls_burger` database. Write a query that returns the average burger cost for all orders that include fries.
+
+    ```sql
+    SELECT avg(burger_cost)
+    FROM orders
+    WHERE side = 'Fries';
+    ```
+
+13. Write a query that returns the cost of the cheapest side ordered.
+
+    ```sql
+    SELECT min(side_cost) FROM orders
+    WHERE side IS NOT NULL;
+    ```
+
+14. Write a query that returns the number of orders that include Fries and the number of orders that include Onion Rings.
+
+    ```sql
+    SELECT count(id)
+    FROM orders
+    WHERE side = 'Fries' OR side = 'Onion Rings';
+    ```
+
