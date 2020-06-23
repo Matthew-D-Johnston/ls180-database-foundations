@@ -1768,3 +1768,190 @@ Aggregate functions perform _aggregation_; that is, they compute a single result
     WHERE side = 'Fries' OR side = 'Onion Rings';
     ```
 
+### Updating Data
+
+* An `UPDATE` statement can be written with the following syntax:
+
+  ```sql
+  UPDATE table_name SET [column_name1 = value1, ...]
+  WHERE (expression);
+  ```
+
+* This statement can be read as "Set column(s) to these values in a table when an expression evaluates to true." We can specify any table in our database to update and specify any number of columns within that table.
+* The `WHERE` clause in the above syntax example is optional. If omitted, PostgreSQL will update **every** row in the target table, so before executing such a query be sure that this is actually what you want to do. Even when using a `WHERE` clause care must be taken to ensure that it is restrictive or specific enough to target only the rows that you want to modify. You can always test your `WHERE` clause in a `SELECT` statement to check which rows are being targeted, before using it in an `UPDATE` statement.
+
+###### Update All Rows
+
+* One thing we might want to do in our `users` table is disable all of our users at once, for example in response to a security issue.
+
+  ```sql
+  UPDATE users SET enabled = false;
+  ```
+
+###### Update Specific Rows
+
+* Using a `WHERE` clause lets us update only the specific rows that meet the condition(s) set in that clause. We previously set all users to be disabled. Let's re-enable a few of those accounts.
+
+  ```sql
+  UPDATE users SET enabled = true
+  WHERE full_name = 'Harry Potter' OR full_name = 'Jane Smith';
+  ```
+
+### Deleting Data
+
+* Sometimes simply updating the data in a row isn't enough to fix a particular data discrepancy, and you need to remove that row altogether. This is where the `DELETE` statement comes in.
+
+* The `DELETE` statement is used to remove entire rows from a database table. The form of a delete statement is somewhat similar to `UPDATE`:
+
+  ```sql
+  DELETE FROM table_name WHERE (expression);
+  ```
+
+* As with `UPDATE`, the `WHERE` clause in a `DELETE` statement is used to target specific rows. Let's try this out before moving on to look at how to delete all of the rows in a table.
+
+###### Delete Specific Rows
+
+* We resolted our duplicate 'Jane Smith' issue by updating the `full_name` of one of those rows, but we still have two Harry Potters. Let's delete one of the rows that contian our duplicate name.
+
+  ```sql
+  DELETE FROM users
+  WHERE full_name='Harry Potter' AND id > 3;
+  ```
+
+###### Delete all Rows
+
+* It's rare that you will want to delete all the rows in a table. If you did want to do this however, it can be done with a very simple statement. Just as with `UPDATE`, the `WHERE` clause in a `DELETE` statement is optional. If omitted, _all_ the rows in the table will be deleted.
+
+  ```sql
+  DELETE FROM users;
+  ```
+
+### Update vs Delete
+
+* One key difference to keep in mind between how `UPDATE` works and how `DELETE` works: with `UPDATE` you can update one or more columns within one or more rows by using the `SET` clause; with `DELETE` you can only delete one or more _entire rows_, and not particular pieces of data from within those rows.
+
+* Although it's not possible to _delete_ specific values within a row, we can approximate this by using `NULL`. You may remember in an earlier chapter we explained that `NULL` is a special value which actually represents an **unknown value**. By using an `UPDATE` statement to `SET` a specific value to `NULL`, although not _deleting_ it as such, we are effectively removing that value.
+
+* This would be done in the form:
+
+  ```sql
+  UPDATE table_name SET column_name1 = NULL
+  WHERE (expression);
+  ```
+
+* A couple of things to note here:
+  * Unlike with a `WHERE` clause, with our `SET` clause we can use `=` with `NULL` since it's not being used as comparison operator in this situation.
+  * If a column has a `NOT NULL` constraint, then it's not possible to set its value to `NULL`. An error will be thrown.
+
+### Use Caution
+
+* Even if you are using a `WHERE` clause in your `UPDATE` or `DELETE` statements it's sensible to be a bit cautious. It's typical to first do a `SELECT` to verify which rows you are targeting. You can then issue the `UPDATE` or `DELETE` with the same modifiers, being confident that you will only affect the rows that you intend to. It's rare to just issue an `UPDATE` or `DELETE` command without verifying first, and probably not a good idea. This is especially the case with `DELETE` since you will remove the entire row from the table.
+
+### Summary of Commands
+
+| Statement                                                    | Notes                                                        |
+| :----------------------------------------------------------- | :----------------------------------------------------------- |
+| UPDATE table_name SET [column_name1 = value1, ...] WHERE (expression); | Update specified fields within a table. The rows updated are dependent on the `WHERE` clause. We may update all rows by leaving out the `WHERE` clause. |
+| DELETE FROM table_name WHERE (expression);                   | Delete rows in the specified table. Which rows are deleted is dependent on the `WHERE` clause. We may delete all rows by leaving out the `WHERE` clause. |
+
+### Exercises
+
+1. Make sure you are connected to the `encyclopedia` database. Add a column to the `animals` table called `class` to hold strings of up to 100 characters.
+
+   Update all the rows in the table so that this column holds the value `Aves`.
+
+   ```sql
+   ALTER TABLE animals
+   ADD COLUMN class varchar(100);
+   
+   UPDATE animals SET class = 'Aves';
+   ```
+
+2. Add two more columns to the `animals` table called `phylum` and `kingdom`. Both should hold strings of up to 100 characters.
+
+   Update all the rows in the table so that `phylum` holds the value of `Chordata` and `kingdom` holds `Animalia` for all the rows in the table.
+
+   ```sql
+   ALTER TABLE animals
+   ADD COLUMN phylum varchar(100);
+   
+   ALTER TABLE animals
+   ADD COLUMN kingdom varchar(100);
+   
+   UPDATE animals SET phylum='Chordata', kingdom="Animalia";
+   ```
+
+3. Add a column to the `countries` table called `continent` to hold strings of up to 50 characters.
+
+   Update all the rows in the table so France and German have a value of `Europe` for this column, Japan has a value of `Asia` and the USA has a value of `North America`.
+
+   ```sql
+   ALTER TABLE countries
+   ADD COLUMN continent varchar(50);
+   
+   UPDATE countries SET continent='Europe'
+   WHERE name = 'France' OR name = 'Germany';
+   
+   UPDATE countries SET continent='Asia'
+   WHERE name = 'Japan';
+   
+   UPDATE countries SET continent = 'North America'
+   WHERE name = 'USA';
+   ```
+
+4. In the `celebrities` table, update the Elvis row so that the value in the `deceased` column is true. Then change the column so that it no longer allows `NULL` values.  
+
+   ```sql
+   UPDATE celebrities SET deceased = true
+   WHERE first_name = 'Elvis';
+   
+   ALTER TABLE celebrities
+   ALTER COLUMN deceased SET NOT NULL;
+   ```
+
+5. Remove Tom Cruise from the `celebrities` table.
+
+   ```sql
+   DELETE FROM celebrities
+   WHERE first_name = 'Tom';
+   ```
+
+6. Change the name of the `celebrities` table to `singers`, and remove anyone who isn't a singer.
+
+   ```sql
+   ALTER TABLE celebrities
+   RENAME TO singers;
+   
+   DELETE FROM singers
+   WHERE occupation NOT LIKE '%singer%';
+   ```
+
+7. Remove all the rows from the `countries` table.
+
+   ```sql
+   DELETE FROM countries;
+   ```
+
+8. Connect to the `ls_burger` database. Change the drink on James Bergman's order from a Cola to a Lemonade.
+
+   ```sql
+   UPDATE orders SET drink = 'Lemonade'
+   WHERE customer_name = 'James Bergman';
+   ```
+
+9. Add Fries to Aaron Muller's order. Make sure to add the cost ($0.99) to the appropriate field and add 3 loyalty points to the current total.
+
+   ```sql
+   UPDATE orders
+   SET side = 'Fries', side_cost = 0.99, customer_loyalty_points = 13
+   WHERE customer_name = 'Aaron Muller';
+   ```
+
+10. The cost of Fries has increased to $1.20. Update the data in the table to reflect this.
+
+    ```sql
+    UPDATE orders
+    SET side_cost = 1.20
+    WHERE side = 'Fries';
+    ```
+
