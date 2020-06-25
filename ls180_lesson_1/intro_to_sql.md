@@ -1955,3 +1955,403 @@ Aggregate functions perform _aggregation_; that is, they compute a single result
     WHERE side = 'Fries';
     ```
 
+### Table Relationships
+
+* Thus far in this book, all the work we've done has been with a single database table. The majority of databases you'll work with as a developer will have more than one table, and those tables will be connected together in various ways to form table relationships. In this chapter we'll explore the reasons for having multiple tables in a database, look at how to define relationships between different tables, and outline the different types of table relationships that can exist.
+
+### Normalization
+
+* At this point, our `users` table doesn't need to hold that much data for each user in our system. It stores a name for the user, whether their account is enabled or not, when they last logged in, and an id to identify each user record. In reality, the requirements of our application will mean that we need to store a lot more data than that. Our app will be used to manage a library of SQL books and allow users to check out the books and also review them.
+* To implement some of these requirements we could simply try adding more columns to our `users` table. But that's a lot of information in one table. There are other issues here as well, such as duplication of data (often referred to as 'redundancy'). For each book that a user checks out, we have to repeate all of the user data in our table.
+* Duplicating data in this way can lead to issues with data integrity.
+* How do we deal with this situation? The answer is to split our data up across multiple different tables, and create relationships between them. The process of splitting up data in this way to remove duplication and improve data integrity is known as _normalization_. 
+* Normalization is a deep topic, and there are complex sets of rules which dictate the extent to which a database is judged to be *normalized*. These rule-sets, known as 'normal forms', are beyond the scope of this book; for now there are two important things to remember:
+  - The *reason* for normalization is to reduce data redundancy and improve data integrity
+  - The *mechanism* for carrying out normalization is arranging data in multiple tables and defining relationships between them
+
+### Database Design
+
+* At a high level, the process of database design involves defining **entities** to represent different sorts of data and designing **relationships** between those entities. But what do we mean by entities, and how do different entities relate to each other? Let's find out.
+
+###### Entities
+
+* An entity represents a real world object, or a set of data that we want to model within our database; we can often identify these as the major nouns of the system we're modeling. For the purposes of this book we're going to try and keep things simple and draw a direct correlation between an entity and a single table of data; in a real database however, the data for a single entity might be stored in more than one table.
+
+###### Relationships
+
+* We're making good progress with our database design. We've decided on the entities we want and have formed a picture of the tables we need, the columns in those tables, and even examples of the data that those columns will hold. There's something missing though, and that's the relationships between our entities.
+* We can build simple Entity Relationship Diagrams, or **ERDs**, to graphically represent entities and their relationships to each other, and is a commonly used tool within database design.
+
+### Keys
+
+* Okay, so we now know the tables that we need and we've also defined the relationships that should exist between those tables in our ERD, but how do we actually implement those relationships in terms of our table schema? The answer to that is to use *keys*.
+* In an earlier section of this book we looked at an aspect of schema called constraints, and explored how constraints act on and work with the data in our database tables. Keys are a special type of constraint used to establish relationships and uniqueness. They can be used to *identify a specific row in the current table*, or to *refer to a specific row in another table*. In this chapter we'll look at two types of keys that fulfil these particular roles: **Primary Keys**, and **Foreign Keys**.
+
+###### Primary Keys
+
+* A necessary part of establishing relationships between two entities or two pieces of data is being able to identify the *data* correctly. In SQL, uniquely identifying data is critical. **A Primary Key is a unique identifier for a row of data**.
+
+* In order to act as a unique identifier, a column must contain some data, and that data should be unique to each row. If you're thinking that those requirements sound a lot like our `NOT NULL` and `UNIQUE` constraints, you'd be right; in fact, making a column a `PRIMARY KEY` is essentially equivalent to adding `NOT NULL` and `UNIQUE` constraints to that column.
+
+* The `id` column in our `users` table has both of these constraints, and we've used that column in many of our `SELECT` queries in order to uniquely identify rows; we've effectively had `id` as a primary key all along although we haven't explicitly set it as the Primary Key. Let's do that now:
+
+  ```sql
+  ALTER TABLE users ADD PRIMARY KEY (id);
+  ```
+
+* Although any column in a table can have `UNIQUE` and `NOT NULL` constraints applied to them, each table can have only one Primary Key. It is common practice for that Primary Key to be a column named `id`. If you look at the other tables we've defined for our database, most of them have an `id` column. While a column of any name can serve as the primary key, using a column named `id` is useful for mnemonic reasons and so is a popular convention.
+* Being able to uniquely identify a row of data in a table via that table's Primary Key column is only half the story when it comes to creating relationships between tables. The other half of this story is the Primary Key's partner, the Foreign Key.
+
+###### Foreign Keys
+
+* A Foreign Key allows us to associate a row in one table to a row in another table. This is done by setting a column in one table as a Foreign Key and having that column reference another table's Primary Key column. Creating this relationship is done using the `REFERENCES` keyword in this form:
+
+  ```sql
+  FOREIGN KEY (fk_col_name) REFERENCES target_table_name (pk_col_name)
+  ```
+
+* By setting up this reference, we're ensuring the *referential integrity* of a relationship. Referential integrity is the assurance that a column value within a record must reference an existing value; if it doesn't then an error is thrown. In other words, PostgreSQL won't allow you to add a value to the Foreign Key column of a table if the Primary Key column of the table it is referencing does not already contain that value. We'll discuss this concept in a bit more detail later on.
+
+* The specific way in which a Foreign Key is used as part of a table's schema depends on the type of relationship we want to define between our tables. In order to implement that schema correctly it is useful to formally describe the relationships we need to model between our entities:
+
+  1. A User can have **ONE** address. An address has only **ONE** user.
+  2. A review can only be about **ONE** Book. A Book can have **MANY** reviews.
+  3. A User can have **MANY** books that he/she may have checked out or returned. A Book can be/ have been checked out by **MANY** users.
+
+  The entity relationships described above can be classified into three relationship types:
+
+  - One to One
+  - One to Many
+  - Many to Many
+
+### One-to-One
+
+* A one-to-one relationship between two entities exists when a particular entity instance exists in one table, and it can have only one associated entity instance in another table.
+
+* **Example:** A user can have only one address, and an address belongs to only one user.
+
+* In the database world, this sort of relationship is implemented like this: the `id` that is the `PRIMARY KEY` of the `users` table is used as both the `FOREIGN KEY` _and_ `PRIMARY KEY` of the `addresses` table.
+
+  ```sql
+  /*
+  one to one: User has one address
+  */
+  
+  CREATE TABLE addresses (
+    user_id int, -- Both a primary and foreign key
+    street varchar(30) NOT NULL,
+    city varchar(30) NOT NULL,
+    state varchar(30) NOT NULL,
+    PRIMARY KEY (user_id),
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+  );
+  ```
+
+### Referential Integrity
+
+* Referential integrity is a concept used when discussing relational data, and which states that table relationships must always be consistent. Different RDBMSes might enforce referential integrity rules differently, but the concept is the same.
+* The constraints we've defined for our `addresses` table enforce the one to one relationship we want between it and our `users` table, whereby a user can only have one address and an address must have one, and only one, user. This is an example of _referential integrity_.
+
+###### The ON DELETE clause
+
+* Adding this clause to the `FOREIGN KEY` definition within a table creation statement, and setting it to `CASCADE` basically means that if the row being referenced is deleted, the row referencing it is also deleted. There are alternatives to `CASCADE` such as `SET NULL` or `SET DEFAULT` which instead of deleting the referencing row will set a new value in the appropriate column for that row.
+* Determining what to do in situations where you delete a row that is referenced by another row is an important design decision, and is part of the concept of maintaining referential integrity. If we don't set such clauses we leave the decision of what to do up to the RDBMS we are using. In the case of PostgreSQL, if we try to delete a row that is being referenced by a row in another table and we have no `ON DELETE` clause for that reference, then an error will be thrown.
+
+### One-to-Many
+
+* A one-to-many relationship exists between two entities if an entity instance in one of the tables can be associated with multiple records (entity instances) in the other table. The opposite relationship does not exist; that is, each entity instance in the second table can only be associated with one entity instance in the first table.
+
+* **Example:** A review belongs to only one book. A book has many reviews.
+
+  ```sql
+  CREATE TABLE books (
+    id serial,
+    title varchar(100) NOT NULL,
+    author varchar(100) NOT NULL,
+    published_date timestamp NOT NULL,
+    isbn char(12),
+    PRIMARY KEY (id),
+    UNIQUE (isbn)
+  );
+  
+  /*
+   one to many: Book has many reviews
+  */
+  
+  CREATE TABLE reviews (
+    id serial,
+    book_id integer NOT NULL,
+    reviewer_name varchar(255),
+    content varchar(255),
+    rating integer,
+    published_date timestamp DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+  );
+  ```
+
+* These table creation statements for our `books` and `reviews` tables are fairly similar to our previous example. There's a key difference worth pointing out in the statement for our `reviews` table however:
+  - Unlike our `addresses` table, the `PRIMARY KEY` and `FOREIGN KEY` reference different columns, `id` and `book_id` respectively. This means that the `FOREIGN KEY` column, `book_id` is not bound by the `UNIQUE` constraint of our `PRIMARY KEY` and so the same value from the `id` column of the `books` table can appear in this column more than once. In other words a book can have many reviews.
+
+### Many-to-Many
+
+* A many-to-many relationship exists between two entities if for one entity instance there may be multiple records in the other table, and vice versa.
+
+* **Example:** A user can check out many books. A book can be checked out by many users (over time).
+
+* In order to implement this sort of relationship we need to introduce a third, cross-reference, table. This table holds the relationship between the two entities, by having **two** `FOREIGN KEY`s, each of which references the **PRIMARY KEY** of one of the tables for which we want to create this relationship. We already have our `books` and `users` tables, so we just need to create the cross-reference table: `checkouts`.
+
+* Here, the `user_id` column in `checkouts` references the `id` column in `users`, and the `book_id` column in `checkouts` references the `id` column in `books`. Each row of the `checkouts` table uses these two Foreign Keys to create an association between rows of `users` and `books`.
+
+* Let's create our `checkouts` table and add some data to it.
+
+  ```sql
+  CREATE TABLE checkouts (
+    id serial,
+    user_id int NOT NULL,
+    book_id int NOT NULL,
+    checkout_date timestamp,
+    return_date timestamp,
+    PRIMARY KEY (id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+  );
+  ```
+
+### Exercises
+
+1. Make sure you are connected to the `encyclopedia` database. We want to hold the continent data in a separate table from the country data.
+   1. Create a `continents` table with an auto-incrementing `id` column (set as the Primary Key), and a `continent_name` column which can hold the same data as the `continent` column from the `countries` table.
+   2. Remove the `continent` column from the `countries` table.
+   3. Add a `continent_id` column to the `countries` table of type integer.
+   4. Add a Foreign Key constraint to the `continent_id` column which references the `id` field of the `continents` table.
+
+   ```sql
+   CREATE TABLE continents (
+   id serial PRIMARY KEY,
+   continent_name varchar(50)
+   );
+   
+   ALTER TABLE countries DROP COLUMN continent;
+   
+   ALTER TABLE countries ADD COLUMN continent_id integer;
+   
+   ALTER TABLE countries ADD FOREIGN KEY (continent_id) REFERENCES continents(id);
+   ```
+
+2. Write queries to add data to the `countries` and `continents` tables so that the data below is correctly represented across the two tables. Add both the countries and the continents to their respective tables in alphabetical order.
+
+   | Name    | Capital         | Population  | Continent     |
+   | :------ | :-------------- | :---------- | :------------ |
+   | France  | Paris           | 67,158,000  | Europe        |
+   | USA     | Washington D.C. | 325,365,189 | North America |
+   | Germany | Berlin          | 82,349,400  | Europe        |
+   | Japan   | Tokyo           | 126,672,000 | Asia          |
+   | Egypt   | Cairo           | 96,308,900  | Africa        |
+   | Brazil  | Brasilia        | 208,385,000 | South America |
+
+```sql
+INSERT INTO continents (continent_name) VALUES
+('Africa'),
+('Asia'),
+('Europe'),
+('North America'),
+('South America');
+
+INSERT INTO countries (name, capital, population, continent_id) VALUES
+('Brazil', 'Brasilia', 208385000, 5),
+('Egypt', 'Cairo', 96308900, 1),
+('France', 'Paris', 67158000, 3),
+('Germany', 'Berlin', 82349400, 3),
+('Japan', 'Tokyo', 126672000, 2),
+('USA', 'Washington D.C.', 325365189, 4);
+```
+
+3. Examine the data below:
+
+   | Album Name        | Released         | Genre                           | Label                     | Singer Name       |
+   | :---------------- | :--------------- | :------------------------------ | :------------------------ | :---------------- |
+   | Born to Run       | August 25, 1975  | Rock and roll                   | Columbia                  | Bruce Springsteen |
+   | Purple Rain       | June 25, 1984    | Pop, R&B, Rock                  | Warner Bros               | Prince            |
+   | Born in the USA   | June 4, 1984     | Rock and roll, pop              | Columbia                  | Bruce Springsteen |
+   | Madonna           | July 27, 1983    | Dance-pop, post-disco           | Warner Bros               | Madonna           |
+   | True Blue         | June 30, 1986    | Dance-pop, Pop                  | Warner Bros               | Madonna           |
+   | Elvis             | October 19, 1956 | Rock and roll, Rhythm and Blues | RCA Victor                | Elvis Presley     |
+   | Sign o' the Times | March 30, 1987   | Pop, R&B, Rock, Funk            | Paisley Park, Warner Bros | Prince            |
+   | G.I. Blues        | October 1, 1960  | Rock and roll, Pop              | RCA Victor                | Elvis Presley     |
+
+   We want to create an `albums` table to hold all the above data except the singer name, and create a reference from the `albums` table to the `singers` table to link each album to the correct singer. Write the necessary SQL statements to do this and to populate the table with data. Assume Album Name, Genre, and Label can hold strings up to 100 characters. Include an auto-incrementing `id` column in the `albums` table.
+
+   ```sql
+   ALTER TABLE singers
+   ADD CONSTRAINT unique_id UNIQUE (id);
+   
+   CREATE TABLE albums (
+   id serial PRIMARY KEY,
+   album_name varchar(100),
+   released date,
+   genre varchar(100),
+   label varchar(100),
+   singer_id int,
+   FOREIGN KEY (singer_id) REFERENCES singers(id)
+   );
+   ```
+
+4. Connect to the `ls_burger` database. If you run a simple `SELECT` query to retreive all the data from the `orders` table, you will see it is very unnormalized. We have repetition of item names and costs and of customer data.
+
+   ```sql
+   ls_burger=# SELECT * FROM orders;
+    id | customer_name  |         burger          |    side     |      drink      |     customer_email      | customer_loyalty_points | burger_cost | side_cost | drink_cost
+   ----+----------------+-------------------------+-------------+-----------------+-------------------------+-------------------------+-------------+-----------+------------
+     3 | Natasha O'Shea | LS Double Deluxe Burger | Onion Rings | Chocolate Shake | natasha@osheafamily.com |                      42 |        6.00 |      1.50 |       2.00
+     2 | Natasha O'Shea | LS Cheeseburger         | Fries       |                 | natasha@osheafamily.com |                      18 |        3.50 |      1.20 |       0.00
+     1 | James Bergman  | LS Chicken Burger       | Fries       | Lemonade        | james1998@email.com     |                      28 |        4.50 |      1.20 |       1.50
+     4 | Aaron Muller   | LS Burger               | Fries       |                 |                         |                      13 |        3.00 |      1.20 |       0.00
+   (4 rows)
+   ```
+
+   We want to break this table up into multiple tables. First of all create a `customers` table to hold the customer name data and an `email_addresses` table to hold the customer email data. Create a one-to-one relationship between them, ensuring that if a customer record is deleted so is the equivalent email address record. Populate the tables with the appropriate data from the current `orders` table.
+
+   ```sql
+   CREATE TABLE customers (
+   id serial PRIMARY KEY,
+   customer_name varchar(100)
+   );
+   
+   CREATE TABLE email_addresses (
+   customer_id integer PRIMARY KEY,
+   customer_email varchar(50),
+   FOREIGN KEY (customer_id)
+   REFERENCES customers(id)
+   ON DELETE CASCADE
+   );
+   
+   INSERT INTO customers (customer_name)
+   VALUES ('James Bergman'),
+   ('Natasha O''Shea'),
+   ('Aaron Muller');
+   
+   INSERT INTO email_addresses (customer_id, customer_email)
+   VALUES (1, 'james1998@email.com'),
+   (2, 'natasha@osheafamily.com');
+   ```
+
+5. We want to make our ordering system more flexible, so that customers can order any combination of burgers, sides and drinks. The first step towards doing this is to put all our products data into a separate table called `products`. Create a table and populate it with the following data:
+
+   | Product Name            | Product Cost | Product Type | Product Loyalty Points |
+   | :---------------------- | :----------- | :----------- | :--------------------- |
+   | LS Burger               | 3.00         | Burger       | 10                     |
+   | LS Cheeseburger         | 3.50         | Burger       | 15                     |
+   | LS Chicken Burger       | 4.50         | Burger       | 20                     |
+   | LS Double Deluxe Burger | 6.00         | Burger       | 30                     |
+   | Fries                   | 1.20         | Side         | 3                      |
+   | Onion Rings             | 1.50         | Side         | 5                      |
+   | Cola                    | 1.50         | Drink        | 5                      |
+   | Lemonade                | 1.50         | Drink        | 5                      |
+   | Vanilla Shake           | 2.00         | Drink        | 7                      |
+   | Chocolate Shake         | 2.00         | Drink        | 7                      |
+   | Strawberry Shake        | 2.00         | Drink        | 7                      |
+
+   The table should also have an auto-incrementing `id` column which acts as its `PRIMARY KEY`. The `product_type` column should hold strings of up to 20 characters. Other than that, the column types should be the same as their equivalent columns from the `orders` table.
+
+   ```sql
+   CREATE TABLE products (
+   id serial PRIMARY KEY,
+   product_name varchar(50),
+   product_cost numeric(4,2) DEFAULT 0,
+   product_type varchar(20),
+   product_loyalty_points integer
+   );
+   
+   INSERT INTO products (product_name, product_cost, product_type, product_loyalty_points)
+   VALUES ('LS Burger', 3.00, 'Burger', 10),
+   ('LS Cheeseburger', 3.50, 'Burger', 15),
+   ('LS Chicken Burger', 4.50, 'Burger', 20),
+   ('LS Double Deluxe Burger', 6.00, 'Burger', 30),
+   ('Fries', 1.20, 'Side', 3),
+   ('Onion Rings', 1.50, 'Side', 5),
+   ('Cola', 1.50, 'Drink', 5),
+   ('Lemonade', 1.50, 'Drink', 5),
+   ('Vanilla Shake', 2.00, 'Drink', 7),
+   ('Chocolate Shake', 2.00, 'Drink', 7),
+   ('Strawberry Shake', 2.00, 'Drink', 7);
+   ```
+
+6. To associate customers with products, we need to do two more things:
+
+   1. Alter or replace the `orders` table so that we can associate a customer with one or more orders (we also want to record an order status in this table).
+   2. Create an `order_items` table so that an order can have one or more products associated with it.
+
+   Based on the order descriptions below, amend and create the tables as necessary and populate them with the appropriate data.
+
+   James has one order, consisting of a Chicken Burger, Fries, Onion Rings, and a Lemonade. It has a status of 'In Progress'.
+
+   Natasha has two orders. The first consists of a Cheeseburger, Fries, and a Cola, and has a status of 'Placed'; the second consists of a Double Deluxe Burger, a Cheeseburger, two sets of Fries, Onion Rings, a Chocolate Shake and a Vanilla Shake, and has a status of 'Complete'.
+
+   Aaron has one order, consisting of an LS Burger and Fries. It has a status of 'Placed'.
+
+   Assume that the `order_status` field of the `orders` table can hold strings of up to 20 characters.
+
+   ```sql
+   DROP TABLE orders;
+   
+   CREATE TABLE orders (
+   id serial PRIMARY KEY,
+   customer_id integer,
+   order_status varchar(20),
+   FOREIGN KEY (customer_id)
+   REFERENCES customers(id)
+   ON DELETE CASCADE
+   );
+   
+   CREATE TABLE order_items (
+   id serial PRIMARY KEY,
+   order_id integer,
+   product_id integer,
+   FOREIGN KEY (order_id)
+   REFERENCES orders(id)
+   ON DELETE CASCADE,
+   FOREIGN KEY (product_id)
+   REFERENCES products(id)
+   ON DELETE CASCADE
+   );
+   
+   INSERT INTO orders (customer_id, order_status)
+   VALUES (1, 'In Progress'),
+   (2, 'Placed'),
+   (2, 'Complete'),
+   (3, 'Placed');
+   
+   INSERT INTO order_items (order_id, product_id)
+   VALUES (1, 3),
+   (1, 5),
+   (1, 6),
+   (1, 8),
+   (2, 2),
+   (2, 5),
+   (2, 7),
+   (3, 4),
+   (3, 2),
+   (3, 5),
+   (3, 5),
+   (3, 6),
+   (3, 10),
+   (3, 9),
+   (4, 1),
+   (4, 5);
+   ```
+
+### What is a SQL Join?
+
+* SQL handles queries across more than one table through the use of JOINs. JOINs are clauses in SQL statements that link two tables together, usually based on the keys that define the relationship between those two tables. There are several types of JOINs: INNER, LEFT OUTER, RIGHT OUTER, FULL OUTER and CROSS; they all do slightly different things, but the basic theory behind them all is the same. We'll take a look at each type of `JOIN` in turn, but first lets go over the general syntax that JOIN statements share.
+
+### Join Syntax
+
+* The general syntax of a `JOIN` statement is as follows:
+
+  ```sql
+  SELECT [table_name.column_name1, table_name.column_name2,..] FROM table_name1
+  join_type JOIN table_name2 ON (join_condition);
+  ```
+
+  
