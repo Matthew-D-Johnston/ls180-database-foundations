@@ -2354,4 +2354,278 @@ INSERT INTO countries (name, capital, population, continent_id) VALUES
   join_type JOIN table_name2 ON (join_condition);
   ```
 
-  
+* The first part of this:
+
+  ```sql
+  SELECT [table_name.column_name1, table_name.column_name2,..] FROM
+  ```
+  is essentially the `SELECT column_list FROM` form that you've already seen in previous SELECT queries, with the slight difference that column names are prepended by table names in the column list.
+
+* Let's focus on the second part of the statement, the part that joins the tables:
+
+  ```sql
+  table_name1 join_type JOIN table_name2 ON (join_condition)
+  ```
+
+  To join one table to another, PostgreSQL needs to know several pieces of information:
+
+  * The name of the first table to join;
+  * The type of join to use;
+  * The name of the second table to join;
+  * The join condition.
+
+  These pieces of information are combined together using the `JOIN` and `ON` keywords. The part of the statement that comes after the `ON` keyword is the _join condition_; this defines the logic by which a row in one table is joined to a row in another table. In most cases this join condition is created using the primary key of one table and the foreign key of the table we want to join it with.
+
+### Types of Joins
+
+* As mentioned earlier, a `JOIN` statement can come in various forms. To specify which type of join to use, you can add either `INNER`, `LEFT`, `RIGHT`, `FULL` or `CROSS` just before the keyword `JOIN`. We'll look at an example of each of those types of join using the tables in our `sql_book` database.  
+
+###### INNER JOIN
+
+* An `INNER JOIN` returns a result set that contains the common elements of the tables, i.e. the intersection where they match on the joined condition. INNER JOINs are the most frequently used JOINs; in fact if you don't specify a join type and simply use the `JOIN` keyword, then PostgreSQL will assume you want an inner join. Our `shapes` and `colors` example from earlier used an `INNER JOIN` in this way.
+
+* In the query below, the line `INNER JOIN (addresses) ON (users.id = addresses.user_id)` creates the intersection between the two tables, which means that the join table contains only rows where there is a definite match between the values in the two columns used in the condition.
+
+  ```sql
+  SELECT users.*, addresses.*
+  FROM users
+  INNER JOIN addresses
+  ON (users.id = addresses.user_id);
+  ```
+
+###### LEFT JOIN
+
+* A LEFT JOIN or a LEFT OUTER JOIN takes all the rows from one table, defined as the `LEFT` table, and joins it with a second table. The `JOIN` is based on the conditions supplied in the parentheses. A `LEFT JOIN` will always include the rows from the `LEFT` table, even if there are no matching rows in the table it is JOINed with.
+
+* Let's try and use the same JOIN query as before, but this time we'll use a left join:
+
+  ```sql
+  SELECT users.*, addresses.*
+  FROM users
+  LEFT JOIN addresses
+  ON (users.id = addresses.user_id)
+  ```
+
+* Note that using either `LEFT JOIN` or `LEFT OUTER JOIN` does exactly the same thing, and the `OUTER` part is often omitted. Even so, it is still common to refer to this type of join as an 'outer' join in order to differentiate it from an 'inner' join. Another type of outer join is a `RIGHT JOIN`, which we'll look at next.
+
+###### RIGHT JOIN
+
+* A `RIGHT JOIN` is similar to a `LEFT JOIN` except that the roles between the two tables are reversed, and all the rows on the second table are included along with any matching rows from the first table. In the last chapter we mentioned that in our `sql_book` database we have books, and also reviews for those books. Not all of our books have reviews, however. Let's make a `RIGHT JOIN` or `RIGHT OUTER JOIN` that displays all reviews and their associated books, along with any books that don't have a review.
+
+  ```sql
+  SELECT reviews.book_id, reviews.content,
+  reviews.rating, reviews.published_date,
+  books.id, books.title, books.author
+  FROM reviews RIGHT JOIN books ON (reviews.book_id = books.id);
+  ```
+
+###### FULL JOIN
+
+* A `FULL JOIN` or `FULL OUTER JOIN` is essentially a combination of `LEFT JOIN` and `RIGHT JOIN`. This type of join contains all of the rows from both of the tables. Where the join condition is met, the rows of the two tables are joined, just as in the previous examples we've seen. For any rows on either side of the join where the join condition is not met, the columns for the _other_ table have `NULL` values for that row.
+* A `FULL JOIN` is a little less common than the other ones we've looked at so far and so we won't show an example for this.
+* Another uncommon type of join is a `CROSS JOIN`; let's take a look.
+
+###### CROSS JOIN
+
+* A `CROSS JOIN`, also known as a Cartesian JOIN, returns all rows from one table crossed with every row from the second table. In other words, the join table of a cross join contains every possible combination of rows from the tables that have been joined. Since it returns all combinations, a `CROSS JOIN` does not need to match rows using a join condition, therefore it does not have an `ON` clause.
+
+* The way this join works is sometimes a little difficult to envisage, so it's worth looking at an example in this case. This SQL query has the similar syntax to other `JOIN`s, but without the `ON` clause:
+
+  ```sql
+  sql_book=# SELECT * FROM users CROSS JOIN addresses;
+  ```
+
+* The query above returns the `addresses` and `users` tables, cross joined. The result set consists of every record in `users` mapped to every record in `addresses`. For 4 users and 3 addresses, we get a total of `4x3=12` records. In mathematical terms, this is the _cross product_ of a set.
+* In an application, it's very unlikely that you would use a `CROSS JOIN`. Most of the time, it's more important to match rows together through a join condition in order to return a meaningful result. It's still important to be aware of `CROSS JOIN`s however, since you may occassionally encounter them.
+
+### Multiple Joins
+
+* It is possible, and indeed common, to join more than just two tables together. This is done by adding additional `JOIN` clauses to your `SELECT` statement. To join multiple tables in this way, there must be a logical relationship between the tables involved. One example would be joining our `users`, `checkouts`, and `books` tables.
+
+  ```sql
+  SELECT users.full_name, books.title, checkouts.checkout_date
+  FROM users
+  INNER JOIN checkouts ON (users.id = checkouts.user_id)
+  INNER JOIN books ON (books.id = checkouts.book_id);
+  ```
+
+* Here we are using two `INNER JOIN`s. One between `users` and `checkouts` and one between `books` and checkouts. In both cases the `JOIN` is implemented by using the Primary Key of one table (either `users` or `books`) and the Foreign Key for that table in the `checkouts` table.
+
+### Aliasing
+
+* You may have noticed that some of the queries we list above can get a bit long. We can cut back on the length of these queries by using aliasing. Aliasing allows us to specify another name for a column or table and then use that name in later parts of a query to allow for more concise syntax. Let's use our three table join from above as an example. Using aliasing, the query would look like this:
+
+  ```sql
+  SELECT u.full_name, b.title, c.checkout_date
+  FROM users AS u
+  INNER JOIN checkouts AS c ON (u.id = c.user_id)
+  INNER JOIN books AS b ON (b.id = c.book_id);
+  ```
+
+* Here we specify single letter aliases for our tables, and use those aliases instead of our table names in order to prepend the columns from those tables in the column list and in the join conditions. This is commonly referred to as 'table aliasing'.
+* We can even use a shorthand for aliasing by leaving out the `AS` keyword entirely. `FROM users u` and `FROM users AS u` are equivalent SQL clauses.
+
+###### Column Aliasing
+
+* Aliasing isn't just useful for shortening SQL queries. We can also use it to display more meaningful information in our result table. For instance, if we want to display the number of checkouts from the library we could write something like:
+
+  ```sql
+  sql_book=# SELECT count(id) AS "Number of Books Checked Out"
+  sql_book-# FROM checkouts;
+  Number of Books Checked Out
+  ----------------------------
+                            4
+  (1 row)
+  ```
+
+* If we hadn't used aliasing above then we lose context about what was counted.
+
+### Subqueries
+
+* Imagine executing a `SELECT` query, and then using the results of that SELECT query as a condition in _another_ `SELECT` query. This is called nesting, and the query that is nested is referred to as a **subquery**.
+
+* For example, suppose we need to select users that have no books checked out. We could do this by finding `users` whose `user_id` is not in the `checkouts` table. If no relation is found, that would mean that the user has not checked out any books.
+
+  ```sql
+  sql_book=# SELECT u.full_name FROM users u
+  sql_book-# WHERE u.id NOT IN (SELECT c.user_id FROM checkouts c);
+    full_name
+  -------------
+   Harry Potter
+  (1 row)
+  ```
+
+* In the code above, the `NOT IN` clause compares the current `user_id` to all of the rows in the result of the subquery. If that `id` number isn't part of the subquery results, then the `full_name` for current row is added to the result set.
+* **Subquery Expressions:** PostgreSQL provides a number of expressions that can be used specifically with sub-queries as `IN`, `NOT IN`, `ANY`, `SOME`, and `ALL`. These all work slightly differently, but essentially they all compare values to the results of a subquery.
+
+###### Subqueries vs Joins
+
+* As you write more queries, you may find that there is more than one way to write a query and achieve the same results. The most common choices are between subqueries and JOINs.
+* When creating queries that return the same result, a differentiator between them may be their performance when compared to each other. As a general rule, JOINs are faster to run than subqueries. This may be something to bear in mind if working with large datasets.
+
+### Summary
+
+* One of the most important things to remember about **how joins work** is that we set a condition that compares a value from the first table (usually a primary key), with one from the second table (usually a foreign key). If the condition that uses these two values evaluates to true, then the row that holds the first value is joined with the row that holds the second value.
+
+* Let's quickly recap on some of the different **types of joins** we can use:
+
+  | Join Type |                            Notes                             |
+  | :-------- | :----------------------------------------------------------: |
+  | INNER     | Combines rows from two tables whenever the join condition is met. |
+  | LEFT      | Same as an inner join, except rows from the first table are added to the join table, regardless of the evaluation of the join condition. |
+  | RIGHT     | Same as an inner join, except rows from the second table are added to the join table, regardless of the evaluation of the join condition. |
+  | FULL      |          A combination of left join and right join.          |
+  | CROSS     | Doesn't use a join condition. The join table is the result of matching every row from the first table with the second table, the cross product of all rows across both tables. |
+
+### Exercises
+
+1. Connect to the `encyclopedia` database. Write a query to return all of the country names along with their appropriate continent names.
+
+   ```sql
+   SELECT countries.name, continents.continent_name
+   FROM countries
+   INNER JOIN continents ON (countries.continent_id = continents.id);
+   ```
+
+2. Write a query to return all of the names and capitals of the European countries.
+
+   ```sql
+   SELECT countries.name, countries.capital
+   FROM countries
+   JOIN continents ON (countries.continent_id = continents.id)
+   WHERE continents.continent_name = 'Europe';
+   ```
+
+3. Write a query to return the first name of any singer who had an album released under the Warner Bros label.
+
+   ```sql
+   SELECT DISTINCT singers.first_name
+   FROM singers JOIN albums
+   ON singers.id = albums.singer_id
+   WHERE albums.label LIKE '%Warner Bros%';
+   ```
+
+4. Write a query to return the first name and last name of any singer who released an album in the 80s and who is still living, along with the names of the album that was released and the release date. Order the results by the singer's age (youngest first).
+
+   ```sql
+   SELECT singers.first_name, singers.last_name, albums.album_name, albums.released
+   FROM singers
+   JOIN albums
+   ON singers.id = albums.singer_id
+   WHERE (date_part('year', albums.released) >= '1980' AND date_part('year', albums.released) < '1990')
+   AND singers.deceased = 'false'
+   ORDER BY age(singers.date_of_birth);
+   ```
+
+5. Write a query to return the first name and last name of any singer without an associated album entry.
+
+   ```sql
+   SELECT singers.first_name, singers.last_name
+   FROM singers
+   WHERE singers.id NOT IN (SELECT albums.singer_id FROM albums);
+   
+   # or...
+   
+   SELECT singers.first_name, singers.last_name
+   FROM singers LEFT JOIN albums
+   ON singers.id = albums.singer_id
+   WHERE albums.id IS NULL;
+   ```
+
+6. Rewrite the query for the last question as a sub-query.
+
+   ```sql
+   SELECT first_name, last_name
+   FROM singers
+   WHERE id NOT IN (SELECT singer_id FROM albums);
+   ```
+
+7. Connect to the `ls_burger` database. Return a list of all orders and their associated product items.
+
+   ```sql
+   SELECT orders.id, products.product_name
+   FROM order_items
+   JOIN orders ON (order_items.order_id = orders.id)
+   JOIN products ON (order_items.product_id = products.id);
+   ```
+
+8. Return the id of any order that includes Fries. Use table aliasing in your query.
+
+   ```sql
+   SELECT o.order_id FROM order_items AS o
+   JOIN products AS p
+   ON o.product_id = p.id
+   WHERE p.product_name = 'Fries';
+   ```
+
+9. Build on the query from the previous question to return the name of any customer who ordered fries. Return this in a column called 'Customers who like Fries.' Don't repeat the same customer name more than once in the results.
+
+   ```sql
+   SELECT DISTINCT c.customer_name AS "Customers who like Fries"
+   FROM customers AS c
+   JOIN orders AS o ON c.id = o.customer_id
+   JOIN order_items AS oi ON o.id = oi.order_id
+   JOIN products AS p ON oi.product_id = p.id
+   WHERE p.product_name = 'Fries';
+   ```
+
+10. Write a query to return the total cost of Natasha O'Shea's orders.
+
+    ```sql
+    SELECT sum(products.product_cost) FROM products
+    JOIN order_items ON products.id = order_items.product_id
+    JOIN orders ON order_items.order_id = orders.id
+    JOIN customers ON orders.customer_id = customers.id
+    WHERE customer_name = 'Natasha O''Shea';
+    ```
+
+11. Write a query to return the name of every product included in an order alongside the number of times it has been ordered.
+
+    ```sql
+    SELECT products.product_name, count(order_items.product_id) 
+    FROM products
+    JOIN order_items ON products.id = order_items.product_id
+    GROUP BY products.product_name;
+    ```
+
+    
