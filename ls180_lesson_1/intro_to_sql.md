@@ -7,7 +7,7 @@
 ### Structured Data
 
 *  Structured data attempts to solve the problem of the limitations of unstructured data.
-* One way to structure data is by using a tabular format of of rows and columns, like a spreadsheet.
+* One way to structure data is by using a tabular format of rows and columns, like a spreadsheet.
 * A common way of storing data in a structured manner is to use a **relational database**. A basic definition of a database is simply 'a structured set of data held in a computer'.
 
 ### Spreadsheet as Database
@@ -1502,7 +1502,6 @@ WHERE burger_cost < 5.00
     ORDER BY burger_cost;
     ```
     
-
 14. Write a query to return the customer name and email address and loyalty points from any order worth 20 or more loyalty points. List the results from the highest number of points to the lowest.
 
     ```sql
@@ -2091,6 +2090,7 @@ Aggregate functions perform _aggregation_; that is, they compute a single result
   ```
 
 * These table creation statements for our `books` and `reviews` tables are fairly similar to our previous example. There's a key difference worth pointing out in the statement for our `reviews` table however:
+  
   - Unlike our `addresses` table, the `PRIMARY KEY` and `FOREIGN KEY` reference different columns, `id` and `book_id` respectively. This means that the `FOREIGN KEY` column, `book_id` is not bound by the `UNIQUE` constraint of our `PRIMARY KEY` and so the same value from the `id` column of the `books` table can appear in this column more than once. In other words a book can have many reviews.
 
 ### Many-to-Many
