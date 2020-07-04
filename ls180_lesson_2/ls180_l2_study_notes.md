@@ -759,13 +759,274 @@ Indent column definitions by four (4) spaces within the `CREATE` definition.
 
 ---
 
+* There are two ways to load SQL files into a PostgreSQL database.
 
+#### psql
 
+* The first option is to pipe the SQL file into the `psql` program, using redirection on the command line to stream the SQL file into `psql`'s standard input:
 
+  ```
+  $ psql -d my_database < file_to_imprt.sql
+  ```
 
+* This will execute the SQL statements within `file_to_import.sql` within the `my_database` database.
 
+* If you already have a running `psql` session, though, you can import a SQL file using the `\i` meta command:
 
+  ```sql
+  my_database=# \i ~/some/files/file_to_import.sql
+  ```
 
+* This will have the same effect as the first command, but does not require exiting a running `psql` session.
+
+#### Practice Problems
+
+1. Load [this file](https://raw.githubusercontent.com/launchschool/sql_course_data/master/sql-and-relational-databases/schema-data-and-sql/loading-database-dumps/films1.sql) into your database.
+
+   ```sql
+   sql-course=# \i films1.sql
+   ```
+
+   1. What does the file do?
+
+      The file `DROP`s the `public.films` table if it exists. It then `CREATE`s a `films` table with three columns: 1) `title` of varying length up to 255 characters; 2) `"year"` of type integer; and 3) `genre` of varying length up to 100 characters. It then inserts three separate rows of data.
+
+   2. What is the output of the command? What does each line in this output mean?
+
+      Upon executing the load command, the output that is returned is:
+
+      ```
+      psql:films1.sql:1: NOTICE:  table "films" does not exist, skipping
+      DROP TABLE
+      CREATE TABLE
+      INSERT 0 1
+      INSERT 0 1
+      INSERT 0 1
+      ```
+
+   3. Open up the file and look at its contents. What does the first line do?
+
+      Taking a look at the file's contents, we see that the first line uses the `DROP TABLE` command to delete the `public.films` table, but only if it exists.
+
+2. Write a SQL statement that returns all rows in the **films** table.
+
+   ###### My Response:
+
+   ```sql
+   SELECT * FROM films;
+   ```
+
+3. Write a SQL statement that returns all rows in the **films** table with a title shorter than 12 letters.
+
+   ```sql
+   SELECT * FROM films
+   WHERE length(title) < 12;
+   ```
+
+4. Write the SQL statements needed to add two additional columns to the **films** table: `director`, which will hold a director's full name, and `duration`, which will hold the length of the film in minutes.
+
+   ###### My Response:
+
+   ```sql
+   ALTER TABLE films
+   ADD COLUMN director varchar(255)
+   ADD COLUMN duration integer;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   ALTER TABLE films ADD COLUMN director varchar(255);
+   ALTER TABLE films ADD COLUMN duration integer;
+   ```
+
+5. Write SQL statements to update the existing rows in the database with values for the new columns:
+
+   | title            | director             | duration |
+   | :--------------- | :------------------- | -------: |
+   | Die Hard         | John McTiernan       |      132 |
+   | Casablanca       | Michael Curtiz       |      102 |
+   | The Conversation | Francis Ford Coppola |      113 |
+
+   ```sql
+   UPDATE films
+   	 SET director = 'John McTiernan',
+   	 		 duration = 132
+    WHERE title = 'Die Hard';
+   
+   UPDATE films
+   	 SET director = 'Michael Curtiz',
+   	 		 duration = 102
+    WHERE title = 'Casablanca';
+   
+   UPDATE films
+   	 SET director = 'Francis Ford Coppola',
+   	 		 duration = 113
+    WHERE title = 'The Conversation';
+   ```
+
+6. Write SQL statements to insert the following data into the **films** table:
+
+   ###### My Response:
+
+   ```sql
+   INSERT INTO films
+   VALUES ('1984', 1956, 'scifi', 'Michael Anderson', 90),
+   ('Tinker Tailor Soldier Spy', 2011, 'espionage', 'Tomas Alfredson', 127),
+   ('The Birdcage', 1996, 'comedy', 'Mike Nichols', 118);
+   ```
+
+7. Write a SQL statement that will return the title and age in years of each movie, with newest movies listed first:
+
+   ###### My Response:
+
+   ```sql
+   SELECT title, 2020 - year AS age FROM films
+    ORDER BY age ASC;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   SELECT title, extract("year" from current_date) - "year" AS age
+   	FROM films
+    ORDER BY age ASC;
+   ```
+
+8. Write a SQL statement that will return the title and duration of each movie longer than two hours, with the longest movies first.
+
+   ###### My Response:
+
+   ```sql
+   SELECT title, duration
+   	FROM films
+    WHERE duration > 120
+    ORDER BY duration DESC;
+   ```
+
+9. Write a SQL statement that returns the title of the longest film.
+
+   ###### My Response:
+
+   ```sql
+   SELECT title AS longest_title
+   	FROM films
+    ORDER BY duration DESC
+    LIMIT 1;
+   ```
+
+---
+
+### More Single Table Queries
+
+---
+
+1. Create a new database called `residents` using the PostgreSQL command line tools.
+
+   ###### My Response:
+
+   ```
+   $ createdb residents
+   ```
+
+2. Load [this file](https://raw.githubusercontent.com/launchschool/sql_course_data/master/sql-and-relational-databases/schema-data-and-sql/more-single-table-queries/residents_with_data.sql) into the database created in #1.
+
+   ```
+   psql -d residents < residents_with_data.sql
+   ```
+
+3. Write a SQL query to list the ten states with the most rows in the `people` table in descending order.
+
+   ###### My Response:
+
+   ```sql
+   SELECT state, count(state)
+   	FROM people
+    GROUP BY state
+    ORDER BY count(state) DESC
+    LIMIT 10;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   SELECT state, COUNT(id) FROM people GROUP BY state ORDER BY count DESC LIMIT 10;
+   ```
+
+4. Write a SQL query that lists each domain used in an email address in the `people` table and how many people in the database have an email address containing that domain. Domains should be listed with the most popular first.
+
+   ###### My Response:
+
+   ```sql
+   SELECT substring(email, '@(.{0,})') AS domain, count(id) 
+   	FROM people
+    GROUP BY domain
+    ORDER BY count DESC;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   SELECT substr(email, strpos(email, '@') + 1) as domain, COUNT(id) FROM people GROUP BY domain ORDER BY count DESC;
+   ```
+
+5. Write a SQL statement that will delete the person with ID `3399` from the `people` table.
+
+   ###### My Response:
+
+   ```sql
+   DELETE FROM people
+    WHERE id = 3399;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   DELETE FROM people WHERE id = 3399;
+   ```
+
+6. Write a SQL statement that will delete all users that are located in the state of California (`CA`).
+
+   ###### My Response:
+
+   ```sql
+   DELETE FROM people WHERE state = 'CA';
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   DELETE FROM people WHERE state = 'CA';
+   ```
+
+7. Write a SQL statement that will update the `given_name` values to be all uppercase for all users with an email address that contains `teleworm.us`.
+
+   ###### My Response:
+
+   ```sql
+   UPDATE people SET given_name = upper(given_name)
+   WHERE email LIKE '%teleworm.us';
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   UPDATE people SET given_name = UPPER(given_name) WHERE email LIKE '%teleworm.us';
+   ```
+
+8. Write a SQL statement that will delete all rows from the `people` table.
+
+   ###### My Response:
+
+   ```sql
+   DELETE FROM people;
+   ```
+
+---
+
+### NOT NULL and Default Values
+
+---
 
 
 
