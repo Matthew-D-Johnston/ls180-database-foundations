@@ -1272,5 +1272,736 @@ Indent column definitions by four (4) spaces within the `CREATE` definition.
 
 ---
 
+1. Import [this file](https://raw.githubusercontent.com/launchschool/sql_course_data/master/sql-and-relational-databases/schema-data-and-sql/more-constraints/films2.sql) into a PostgreSQL database.
+
+   ###### My Response:
+
+   ```
+   $ psql -d sql-course < films2.sql
+   ```
+
+2. Modify all of the columns to be `NOT NULL`.
+
+   ###### My Response:
+
+   ```sql
+   ALTER TABLE films
+   ALTER COLUMN
+   title, year, genre, director, duration
+   SET NOT NULL;
+   ```
+
+   Doesn't seem to work with multiple columns.
+
+   ###### LS Response:
+
+   ```sql
+   ALTER TABLE films ALTER COLUMN title SET NOT NULL;
+   ALTER TABLE films ALTER COLUMN year SET NOT NULL;
+   ALTER TABLE films ALTER COLUMN genre SET NOT NULL;
+   ALTER TABLE films ALTER COLUMN director SET NOT NULL;
+   ALTER TABLE films ALTER COLUMN duration SET NOT NULL;
+   ```
+
+3. How does modifying a column to be `NOT NULL` affect how it is displayed by `\d films`?
+
+   ###### My Response:
+
+   When invoking the `\d` command on the `films` table the table's schema is displayed on the screen, and under the `Nullable` column `not null` should be displayed for each of the `films` table's columns that we specified to be `NOT NULL`.
+
+   ```
+   sql-course=# \d films
+                           Table "public.films"
+     Column  |          Type          | Collation | Nullable | Default 
+   ----------+------------------------+-----------+----------+---------
+    title    | character varying(255) |           | not null | 
+    year     | integer                |           | not null | 
+    genre    | character varying(100) |           | not null | 
+    director | character varying(255) |           | not null | 
+    duration | integer                |           | not null | 
+   ```
+
+   ###### LS Response:
+
+   `not null` will be included in that column's `Modifiers` column:
+
+   ```
+   sql-course=# \d films
+                Table "public.films"
+     Column  |          Type          | Modifiers
+   ----------+------------------------+-----------
+    title    | character varying(255) | not null
+    year     | integer                | not null
+    genre    | character varying(100) | not null
+    director | character varying(255) | not null
+    duration | integer 
+   ```
+
+   Obviously, LS has a slightly different interface than what I am working with on my machine.
+
+4. Add a constraint to the table **films** that ensures that all films have a unique title.
+
+   ###### My Response:
+
+   ```sql
+   ALTER TABLE films
+   ALTER COLUMN title
+     SET UNIQUE;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   ALTER TABLE films ADD CONSTRAINT title_unique UNIQUE (title);
+   ```
+
+5. How is the constraint added in #4 displayed by `\d films`?
+
+   ###### My Response:
+
+   It is displayed at the bottom of the schema table in a short statement:
+
+   ```
+   "title_unique" UNIQUE CONSTRAINT, btree (title)
+   ```
+
+   ###### LS Response:
+
+   It appears as an index:
+
+   ```
+   Indexes:
+       "title_unique" UNIQUE CONSTRAINT, btree (title)
+   ```
+
+6. Write a SQL statement to remove the constraint added in #4.
+
+   ###### My Response:
+
+   ```sql
+   ALTER TABLE films DROP CONSTRAINT title_unique;
+   ```
+
+   ###### LS Response:
+
+   Same.
+
+7. Add a constraint to **films** that requires all rows to have a value for `title` that is at least 1 character long.
+
+   ###### My Response:
+
+   ```sql
+   ALTER TABLE films ADD CHECK length(title) >= 1;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   ALTER TABLE films ADD CONSTRAINT title_length CHECK (length(title) >= 1);
+   ```
+
+8. What error is shown if the constraint created in #7 is violated? Write a SQL `INSERT` statement that demonstrates this.
+
+   ###### My Response:
+
+   An error indicating that the check constraint `"title_length"` has been violated:
+
+   ```
+   sql-course=# INSERT INTO films VALUES ('', 1999, 'comedy', 'Wes Anderson', 115);
+   ERROR:  new row for relation "films" violates check constraint "title_length"
+   DETAIL:  Failing row contains (, 1999, comedy, Wes Anderson, 115).
+   ```
+
+   Here is the `INSERT` statement that I wrote
+
+   ```sql
+   INSERT INTO films VALUES ('', 1999, 'comedy', 'Wes Anderson', 115);
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   sql-course=# INSERT INTO films VALUES ('', 1901, 'action', 'JJ Abrams', 126);
+   ERROR:  new row for relation "films" violates check constraint "title_length"
+   DETAIL:  Failing row contains (, 1901, action, JJ Abrams, 126).
+   ```
+
+9. How is the constraint added in #7 displayed by `\d films`?
+
+   ###### My Response:
+
+   As a check constraint:
+
+   ```
+   Check constraints:
+       "title_length" CHECK (length(title::text) >= 1)
+   ```
+
+   ###### LS Response:
+
+   It appears as a "check constraint":
+
+   ```
+   Check constraints:
+       "title_length" CHECK (length(title::text) >= 1)
+   ```
+
+10. Write a SQL statement to remove the constraint added in #7.
+
+    ###### My Response:
+
+    ```sql
+    ALTER TABLE films DROP CONSTRAINT title_length;
+    ```
+
+    ###### LS Response:
+
+    Same.
+
+11. Add a constraint to the table **films** that ensures that all films have a year between 1900 and 2100.
+
+    ###### My Response:
+
+    ```sql
+    ALTER TABLE films ADD CONSTRAINT year_range CHECK year BETWEEN 1900 AND 2100;
+    ```
+
+    ###### LS Response:
+
+    ```sql
+    ALTER TABLE films ADD CONSTRAINT year_range CHECK (year BETWEEN 1900 AND 2100);
+    ```
+
+12. How is the constraint added in #11 displayed by `\d films`?
+
+    ###### My Response:
+
+    It appears as a "check constraint":
+
+    ```
+    Check constraints:
+        "year_range" CHECK (year >= 1900 AND year <= 2100)
+    ```
+
+    ###### LS Response:
+
+    Same.
+
+13. Add a constraint to **films** that requires all rows to have a value for `director` that is at least 3 characters long and contains at least one space character (` `).
+
+    ###### My Response:
+
+    ```sql
+    ALTER TABLE films ADD CONSTRAINT director_field CHECK (length(director) >= 3 AND director LIKE '% %');
+    ```
+
+    ###### LS Response:
+
+    ```sql
+    ALTER TABLE films ADD CONSTRAINT director_name
+    		CHECK (length(director) >= 3 AND position(' ' in director) > 0);
+    ```
+
+14. How does the constraint created in #13 appear in `\d films`?
+
+    ###### My Response:
+
+    It appears as a "check constraint":
+
+    ```
+    Check constraints:
+        "director_name" CHECK (length(director::text) >= 3 AND "position"(director::text, ' '::text) > 0)
+    ```
+
+    ###### LS Response:
+
+    Same.
+
+15. Write an `UPDATE` statement that attempts to change the director for "Die Hard" to "Johnny". Show the error that occurs when this statement is executed.
+
+    ###### My Response:
+
+    ```sql
+    UPDATE films SET director = 'Johnny' WHERE title = 'Die Hard';
+    
+    ERROR:  new row for relation "films" violates check constraint "director_name"
+    DETAIL:  Failing row contains (Die Hard, 1988, action, Johnny, 132).
+    ```
+
+    ###### LS Response:
+
+    ```sql
+    sql-course=# UPDATE films SET director = 'Johnny' WHERE title = 'Die Hard';
+    ERROR:  new row for relation "films" violates check constraint "director_name"
+    DETAIL:  Failing row contains (Die Hard, 1988, action, Johnny, 132).
+    ```
+
+16. List three ways to use the schema to restrict what values can be stored in a column.
+
+    ###### My Response:
+
+    1. Through a column constraint.
+    2. Through a table constraint.
+    3. Through a check constraint.
+
+    ###### LS Response:
+
+    1. Data type (which can include a length limitation)
+    2. NOT NULL Constraint
+    3. Check Constraint
+
+17. Is it possible to define a default value for a column that will be considered invalid by a constraint? Create a table that tests this.
+
+    ###### My Response:
+
+    Yes, it is possible to define a default value for a column that will be considered invalid by a constraint; however, any time that default value is attempted to be set an error is raised indicating that the constraint has been violated.
+
+18. How can you see a list of all the constraints on a table?
+
+    ###### My Response:
+
+    You can see a list of all the constraints on a table by using the `\d` command.
+
+    ###### LS Response:
+
+    Using `\d $tablename`, where `$tablename` is the name of the table.
+
+---
+
+### Using Keys
+
+---
+
+* It is entirely possible to have identical rows of data that represent different real-world entities appear in the same table. So how do we distinguish these identical rows?
+
+#### Solving the Problem: Keys
+
+* The solution to this problem is to stop using values within the data to identify rows. Or at least, stop using values that have not been carefully selected to be unique across the entire dataset.
+* SQL databases provide something called keys that solve this problem. A **key** uniquely identifies a single row in a database table. There are two types of keys that we'll cover in this course:
+  * Natural keys
+  * Surrogate keys
+
+#### Natural Keys
+
+* A **natural key** is an existing value in a dataset that can be used to uniquely identify each row of data in that dataset. On the surface there appear to be a lot of values that _might_ be satisfactory for this use: a person's phone number, email address, social security number, or a product number.
+* However, in reality most values that _seem_ like they are good candidates for natural keys turn out to not be. A phone number and email address can change hands. A social security number shouldn't change but only some people have them. And products often go through multiple revisions while retaining the same product number.
+* There are a variety of solutions to these problems, including using more than one existing value together as a **composite key**. But instead of solving the problems associated with natural keys, this will often just defer the problem until later without actually addressing it.
+* Luckily for database users everywhere, there is another option.
+
+#### Surrogate Keys
+
+* A **surrogate key** is a value that is created solely for the purpose of identifying a row of data in a database table. Because it is created specifically for that purpose, it can avoid many of the problems associated with natural keys.
+
+* Perhaps the most common surrogate key in use today is an auto-incrementing integer. This is a value that is added to each row in a table as it is created. With each row, this value increases in order to remain unique in each row.
+
+* Let's create a table with just such a column in PostgreSQL:
+
+  ```sql
+  CREATE TABLE colors (id serial, name text);
+  ```
+
+* It turns out that **serial** columns in PostgreSQL are actually a short-hand for a column definition that is much longer:
+
+  ```sql
+  -- This statement:
+  CREATE TABLE colors (id serial, name text);
+  
+  -- is actually interpreted as if it were this one:
+  CREATE SEQUENCE colors_id_seq;
+  CREATE TABLE colors (
+  		id integer NOT NULL DEFAULT nextval('colors_id_seq'),
+  		name text
+  );
+  ```
+
+* A **sequence** is a special kind of relation that generates a series of numbers. A sequence will remember the last number it generated, so it will generate numbers in a predetermined sequence automatically.
+
+#### Primary Keys
+
+* Following conventions in software development saves time, reduces confusion, and minimizes the amount of time needed to get up to speed on a new project. Different teams and software packages may have varying conventions, but contemporary database development within the Ruby, JavaScript, and other communities has settled on the following conventions for working with tables and primary keys:
+  1. All tables should have a primary key column called `id`.
+  2. The `id` column should automatically be set to a unique value as new rows are inserted into the table.
+  3. The `id` column will often be an integer, but there are other data types (such as UUIDs) that can provide specific benefits.
+* Do you have to declare a column as a `PRIMARY KEY` in every table? Technically, no. But doing so is generally a good idea.
+
+#### Practice Problems
+
+1. Write a SQL statement that makes a new sequence called "counter".
+
+   ###### My Response:
+
+   ```sql
+   CREATE SEQUENCE counter;
+   ```
+
+   ###### LS Response:
+
+   Same.
+
+2. Write a SQL statement to retrieve the next value from the sequence created in #1.
+
+   ###### My Response:
+
+   ```sql
+   SELECT nextval('counter');
+   ```
+
+   ###### LS Response:
+
+   Same.
+
+3. Write a SQL statement that removes a sequence called "counter".
+
+   ###### My Response:
+
+   ```sql
+   DROP SEQUENCE counter;
+   ```
+
+   ###### LS Response:
+
+   Same.
+
+   
+
+4. Is it possible to create a sequence that returns only even numbers? [The documentation for sequence might be useful](https://www.postgresql.org/docs/9.5/sql-createsequence.html).
+
+   ###### My Response:
+
+   Yes. For example:
+
+   ```sql
+   CREATE SEQUENCE counter INCREMENT BY 2 START WITH 2;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   sql-course=# CREATE SEQUENCE even_counter INCREMENT BY 2 MINVALUE 2;
+   CREATE SEQUENCE
+   sql-course=# SELECT nextval('even_counter');
+    nextval
+   ---------
+          2
+   (1 row)
+   
+   sql-course=# SELECT nextval('even_counter');
+    nextval
+   ---------
+          4
+   (1 row)
+   ```
+
+5. What will the name of the sequence created by the following SQL statement be?
+
+   ```sql
+   CREATE TABLE regions (id serial PRIMARY KEY, name text, area integer);
+   ```
+
+   ###### My Response:
+
+   ```
+   regions_id_seq
+   ```
+
+   ###### LS Response:
+
+   `regions_id_seq`.
+
+6. Write a SQL statement to add an auto-incrementing integer primary key column to the `films` table.
+
+   ###### My Response:
+
+   ```sql
+   ALTER TABLE films ADD COLUMN id serial PRIMARY KEY;
+   ```
+
+   ###### LS Response:
+
+   Same.
+
+7. What error do you receive if you attempt to update a row to have a value for `id` that is used by another row?
+
+   ###### My Response:
+
+   ```
+   ERROR:  duplicate key value violates unique constraint "films_pkey"
+   DETAIL:  Key (id)=(8) already exists.
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   films=# UPDATE films SET id = 3 WHERE title = 'Die Hard';
+   ERROR: duplicate key value violates unique constraint "films_pkey"
+   DETAIL: Key (id)=(3) already exists.
+   ```
+
+8. What error do you receive if you attempt to add another primary key column to the `films` table?
+
+   ###### My Response:
+
+   ```
+   ERROR:  multiple primary keys for table "films" are not allowed
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   films=# ALTER TABLE films ADD COLUMN another_id serial PRIMARY KEY;
+   ERROR: multiple primary keys for table "films" are not allowed
+   ```
+
+9. Write a SQL statement that modifies the table `films` to remove its primary key while preserving the `id` column and the values it contains.
+
+   ###### My Response:
+
+   ```sql
+   ALTER TABLE films DROP CONSTRAINT films_pkey;
+   ```
+
+   ###### LS Response:
+
+   Same.
+
+----
+
+### GROUP BY and Aggregate Functions
+
+---
+
+1. Import [this file](https://raw.githubusercontent.com/launchschool/sql_course_data/master/sql-and-relational-databases/schema-data-and-sql/group-by-and-aggregate-functions/films4.sql) into a database.
+
+   ###### My Response:
+
+   ```
+   $ psql -d sql-course < films4.sql
+   ```
+
+   ###### LS Response:
+
+   ```
+   $ psql -d films < films4.sql
+   ```
+
+2. Write SQL statements that will insert the following films into the database:
+
+   | title           | year | genre     | director          | duration |
+   | :-------------- | :--- | :-------- | :---------------- | :------- |
+   | Wayne's World   | 1992 | comedy    | Penelope Spheeris | 95       |
+   | Bourne Identity | 2002 | espionage | Doug Liman        | 118      |
+
+   ###### My Response:
+
+   ```sql
+   INSERT INTO films VALUES (DEFAULT, 'Wayne''s World', 1992, 'comedy', 'Penelope Spheeris', 95);
+   
+   INSERT INTO films VALUES (DEFAULT, 'Bourne Identity', 2002, 'espionage', 'Doug Liman', 118)
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   INSERT INTO films (title, year, genre, director, duration)
+   	VALUES ('The Bourne Identity', 2002, 'espionage', 'Doug Liman', 118);
+   INSERT INTO films (title, year, genre, director, duration)
+   	VALUES ('Wayne''s World', 1992, 'comedy', 'Penelope Spheeris', 95);
+   ```
+
+3. Write a SQL query that lists all genres for which there is a movie in the `films` table.
+
+   ###### My Response:
+
+   ```sql
+   SELECT genre FROM films GROUP BY genre;
+   ```
+
+   ###### LS Response:
+
+   ```
+   SELECT DISTINCT genre FROM films;
+   ```
+
+4. Write a SQL querty that returns the same results as the answer for #3, but without using `DISTINCT`.
+
+   ###### My Response:
+
+   ```sql
+   SELECT genre FROM films GROUP BY genre;
+   ```
+
+   ###### LS Response:
+
+   Same.
+
+5. Write a SQL query that determines the average duration across all the movies in the `films` table, rounded to the nearest minute.
+
+   ###### My Response:
+
+   ```sql
+   SELECT round(avg(duration)) AS average_duration FROM films;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   SELECT ROUND(AVG(duration)) FROM films;
+   ```
+
+6. Write a SQL query that determines the average duration for each genre in the `films` table, rounded to the nearest minute.
+
+   ###### My Response:
+
+   ```sql
+   SELECT genre, ROUND(AVG(duration)) AS average_duration FROM films
+    GROUP BY genre;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   SELECT genre, ROUND(AVG(duration)) AS average_duration FROM films GROUP BY genre;
+   ```
+
+7. Write a SQL query that determines the average duration of movies for each decade represented in the `films` table, rounded to the nearest minute and listed in chronological order.
+
+   ###### My Response:
+
+   ```sql
+   SELECT 
+   	(EXTRACT(DECADE FROM make_date(year, 1, 1)) * 10) AS decade,
+   	ROUND(AVG(duration)) AS average_duration
+   	FROM films
+    GROUP BY decade
+    ORDER BY decade ASC;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   SELECT year / 10 * 10 as decade, ROUND(AVG(duration)) as average_duration
+   	FROM films GROUP BY decade ORDER BY decade;
+   ```
+
+8. Write a SQL query that finds all films whose director has the first name `John`.
+
+   ###### My Response:
+
+   ```sql
+   SELECT title, director FROM films
+    WHERE director LIKE 'John%';
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   SELECT * FROM films WHERE director LIKE 'John %';
+   ```
+
+9. Write a SQL query that will return the following data:
+
+   ```
+      genre   | count
+   -----------+-------
+    scifi     |     5
+    comedy    |     4
+    drama     |     2
+    espionage |     2
+    crime     |     1
+    thriller  |     1
+    horror    |     1
+    action    |     1
+   (8 rows)
+   ```
+
+   ###### My Response:
+
+   ```sql
+   SELECT genre, count(genre) FROM films
+   GROUP BY genre
+   ORDER BY count DESC;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   SELECT genre, count(films.id) FROM films GROUP BY genre ORDER BY count DESC;
+   ```
+
+10. Write a SQL query that will return the following data:
+
+    ```
+     decade |   genre   |                  films
+    --------+-----------+------------------------------------------
+       1940 | drama     | Casablanca
+       1950 | drama     | 12 Angry Men
+       1950 | scifi     | 1984
+       1970 | crime     | The Godfather
+       1970 | thriller  | The Conversation
+       1980 | action    | Die Hard
+       1980 | comedy    | Hairspray
+       1990 | comedy    | Home Alone, The Birdcage, Wayne's World
+       1990 | scifi     | Godzilla
+       2000 | espionage | Bourne Identity
+       2000 | horror    | 28 Days Later
+       2010 | espionage | Tinker Tailor Soldier Spy
+       2010 | scifi     | Midnight Special, Interstellar, Godzilla
+    (13 rows)
+    ```
+
+    ###### My Response:
+
+    ```sql
+    SELECT year / 10 * 10 AS decade,
+    			 genre,
+    			 title
+    	FROM films
+     GROUP BY decade AND genre;
+    ```
+
+    ###### LS Response:
+
+    ```sql
+    SELECT year / 10 * 10 AS decade, genre, string_agg(title, ', ') AS films
+    	FROM films GROUP BY decade, genre ORDER BY decade, genre;
+    ```
+
+11. Write a SQL query that will return the following data:
+
+    ```
+       genre   | total_duration
+    -----------+----------------
+     horror    |            113
+     thriller  |            113
+     action    |            132
+     crime     |            175
+     drama     |            198
+     espionage |            245
+     comedy    |            407
+     scifi     |            632
+    (8 rows)
+    ```
+
+    ###### My Response:
+
+    ```sql
+    SELECT genre, sum(duration) AS total_duration FROM films GROUP BY genre ORDER BY total_duration ASC;
+    ```
+
+    ###### LS Response:
+
+    ```sql
+    SELECT genre, sum(duration) AS total_duration
+    	FROM films GROUP BY genre ORDER BY total_duration ASC;
+    ```
+
+---
+
+### How PostgreSQL Executes Queries
+
+---
+
+
+
 
 
