@@ -2001,7 +2001,87 @@ Indent column definitions by four (4) spaces within the `CREATE` definition.
 
 ---
 
+#### A Declarative Language
 
+* SQL is a declarative language. A SQL statement describes _what_ to do, but not _how_ to do it. It is up to the PostgreSQL server to take each query, determine how to best execute it, and return the desired results.  
+* The benefit of this approach is that it vastly simplifies database interactions for a user. Databases can perform involved data manipulations with the use of just a few SQL terms, freeing the user to think at a higher level about what data they want returned and in what format.
+* The downside to this automated approach is that some of the time, the database will choose to do something in an inefficient way.
+* Fortunately, there are ways to give the database hints (or requirements) about how it should execute a query.
 
+#### How PostgreSQL Executes a Query
 
+* While the exact way that a PostgreSQL database server will execute a query will depend on many variables, there is a high-level process that each query goes through. Being familiar with these steps can be a benefit for knowing the difference between two queries that appear to return the same results, or understanding why some queries are rejected by the database.
+* The basic process for a `SELECT` query is described below.
+
+###### Rows are collected into a virtual derived table
+
+* You can think of this step as the database creating a new temporary table using the data from all the tables listed in the query's `FROM` clause. This includes tables that are used in `JOIN` clauses.
+
+###### Rows are filtered using `WHERE` conditions
+
+* All the conditions in the `WHERE` clause are evaluated for each row, and those that don't meet these requirements are removed.
+
+###### Rows are divided into groups
+
+* If the query includes a `GROUP BY` clause, the remaining rows are divided into the appropriate groups.
+
+###### Groups are filtered using `HAVING` conditions
+
+* `HAVING` conditions are very similar to `WHERE` conditions, only they are applied to the values that are used to create groups and not individual rows. This means that a column that is mentioned in a `HAVING` clause should almost always appear in a `GROUP BY` clause and/or an aggregate function in the same query. Both `GROUP BY` and aggregate functions perform grouping, and the `HAVING` clause is used to filter that aggregated/grouped data.
+* `HAVING` clauses aren't as common as `WHERE` clauses, and we won't be seeing them very much in this course.
+
+###### Compute values to return using select list
+
+* Each element in the select list is evaluated, including any functions, and the resulting values are associated with the name of the column they are from or the name of the last function evaluated, unless a different name is specified in the query with `AS`.
+
+###### Sort Results
+
+* The result set is sorted as specified in an `ORDER BY` clause. Without this clause, the results are returned in an order that is the result of how the database executed the query and the rows' order in the original tables. It's best to always specify order if your application relies on rows being returned in a specific order.
+
+###### Limit Results
+
+* If `LIMIT` or `OFFSET` clauses are included in the query, these are used to adjust which rows in the result set are returned.
+
+---
+
+### Summary
+
+---
+
+* _SQL_ is a _special-purpose, declarative_ language used to manipulate the structure and values of datasets stored in a relational database.
+
+* SQL is comprised of three sublanguages:
+
+  | sub-language                          | controls                       | SQL Constructs                         |
+  | :------------------------------------ | :----------------------------- | :------------------------------------- |
+  | **DDL** or data definition language   | relation structure and rules   | `CREATE`, `DROP`, `ALTER`              |
+  | **DML** or data manipulation language | values stored within relations | `SELECT`, `INSERT`, `UPDATE`, `DELETE` |
+  | **DCL** or data control language      | who can do what                | `GRANT`                                |
+
+* SQL code is made up of statements, which must be terminated by a semicolon.
+
+* PostgreSQL provides many data types. We've looked at the following subset of types it supports in this lesson:
+
+  | Data Type                   | Type      | Value                             | Example Values          |
+  | :-------------------------- | :-------- | :-------------------------------- | :---------------------- |
+  | `varchar(length)`           | character | up to `length` characters of text | `canoe`                 |
+  | `text`                      | character | unlimited length of text          | `a long string of text` |
+  | `integer`                   | numeric   | whole numbers                     | `42`, `-1423290`        |
+  | `numeric`                   | numeric   | floating-point numbers            | `24.563`, `-14924.3515` |
+  | `decimal(precision, scale)` | numeric   | arbitrary precision numbers       | `123.45`, `-567.89`     |
+  | `timestamp`                 | date/time | date and time                     | `1999-01-08 04:05:06`   |
+  | `date`                      | date/time | only a date                       | `1999-01-08`            |
+  | `boolean`                   | boolean   | true or false                     | `true`, `false`         |
+
+* `NULL` is a special value that represents the absence of any other value.
+* `NULL` values must be compared using `IS NULL` or `IS NOT NULL`.
+* Database dumps can be loaded using `psql -d database_name < file_to_import.sql`.
+* Table columns can have default values, which are specified using `SET DEFAULT`.
+* Table columns can be disallowed from storing `NULL` values using `SET NOT NULL`.
+* `CHECK` constraints are rules that must be met by the data stored in a table.
+* A *natural key* is an existing value in a dataset that can be used to uniquely identify each row of data in that dataset.
+* A *surrogate key* is a value that is created solely for the purpose of identifying a row of data in a database table.
+* A *primary key* is a value that is used to uniquely identify the rows in a table. It cannot be `NULL` and must be unique within a table. They are created using `PRIMARY KEY`.
+* `serial` columns are typically used to create auto-incrementing columns in PostgreSQL.
+* `AS` is used to rename tables and columns within a SQL statement.
 
