@@ -282,3 +282,241 @@
 
 ---
 
+### Using Foreign Keys
+
+---
+
+* In database parlance, a _foreign key_ can refer to two different, but related, things:
+  * A column that represents a relationship between two rows by pointing to a specific row in another table using its _primary key_. A complete name for these columns is _foreign key column_.
+  * A constraint that enforces certain rules about what values are permitted in these foreign key relationships. A complete name for this type of constraint is _foreign key constraint_.
+
+###### Creating Foreign Key Columns
+
+* To create a foreign key _column_, just create a column of the same type as the primary key column it will point to. Since the `products` table shown above uses an `integer` type for its primary key column, `orders.product_id` is also an `integer` column.
+
+###### Creating Foreign Key Constraints
+
+* To create a foreign key _constraint_, there are two syntaxes that can be used. The first is to add a `REFERENCES` clause to the description of a column in a `CREATE TABLE` statement:
+
+  ```sql
+  CREATE TABLE orders (
+  	id serial PRIMARY KEY,
+  	product_id integer REFERENCES products (id),
+  	quantity integer NOT NULL
+  );
+  ```
+
+* The second way is to add the foreign key constraint separately, just as you would any other constraint (note the use of `FOREIGN KEY` instead of `CHECK`):
+
+  ```sql
+  ALTER TABLE orders ADD CONSTRAINT orders_product_id_fkey FOREIGN KEY (product_id) REFERENCES products(id);
+  ```
+
+###### Referential Integrity
+
+* One of the main benefits of using the foreign key constraints provided by a relational database is to preserve the _referential integrity_ of the data in the database. The database does this by ensuring that every value in a foreign key column exists in the primary key column of the referenced table. Attempts to insert rows that violate the table's constraints will be rejected.
+
+#### Practice Problems
+
+1. Import [this file](https://raw.githubusercontent.com/launchschool/sql_course_data/master/sql-and-relational-databases/relational-data-and-joins/foreign-keys/orders_products1.sql) into a new database.
+
+   ###### My Response:
+
+   ```
+   $ psql -d sql-course < orders_products1.sql
+   ```
+
+   ###### LS Response:
+
+   ```
+   $ createdb foreign-keys
+   $ psql -d foreign-keys < orders_products1.sql
+   ```
+
+2. Update the `orders` table so that referential integrity will be preserved for the data between `orders` and `products`.
+
+   ###### My Response:
+
+   ```sql
+   ALTER TABLE orders ADD CONSTRAINT orders_product_id_fkey FOREIGN KEY (product_id) REFERENCES products(id);
+   ```
+
+   ###### LS Response:
+
+   Same.
+
+3. Use `psql` to insert the data shown in the following table into the database:
+
+   | Quantity | Product    |
+   | :------- | :--------- |
+   | 10       | small bolt |
+   | 25       | small bolt |
+   | 15       | large bolt |
+
+   ###### My Response:
+
+   ```sql
+   INSERT INTO products (name)
+   VALUES ('small bolt'),
+   ('large bolt');
+   
+   INSERT INTO orders (product_id, quantity)
+   VALUES (1, 10),
+   (1, 25),
+   (2, 15);
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   INSERT INTO products (name) VALUES ('small bolt');
+   INSERT INTO products (name) VALUES ('large bolt');
+   SELECT * FROM products;
+   
+   INSERT INTO orders (product_id, quantity) VALUES (1, 10);
+   INSERT INTO orders (product_id, quantity) VALUES (1, 25);
+   INSERT INTO orders (product_id, quantity) VALUES (2, 15);
+   ```
+
+4. Write a SQL statement that returns a result like this:
+
+   ```
+    quantity |    name
+   ----------+------------
+          10 | small bolt
+          25 | small bolt
+          15 | large bolt
+   (3 rows)
+   ```
+
+   ###### My Response:
+
+   ```sql
+   SELECT o.quantity, p.name
+   	FROM orders AS o
+   	JOIN products AS p
+   		ON p.id = o.product_id;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   SELECT quantity, name FROM orders INNER JOIN products ON orders.product_id = products.id;
+   ```
+
+5. Can you insert a row into `orders` without a `product_id`? Write a SQL statement to prove your answer.
+
+   ###### My Response:
+
+   I didn't know, so I wrote this statement:
+
+   ```sql
+   INSERT INTO orders (quantity)
+   VALUES (30);
+   ```
+
+   It added a row to the `orders` table, so the answer is yes, you can insert a row into `orders` without a `product_id`.
+
+   ###### LS Response:
+
+   Yes:
+
+   ```sql
+   INSERT INTO orders (quantity) VALUES (42);
+   INSERT 0 1
+   ```
+
+6. Write a SQL statement that will prevent NULL values from being stored in `orders.product_id`. What happens if you execute that statement?
+
+   ###### My Response:
+
+   ```sql
+   ALTER TABLE orders ALTER COLUMN product_id SET NOT NULL;
+   ```
+
+   If I execute that statement it throws up an error: `ERROR: column "product_id" contains null values`
+
+   ###### LS Response:
+
+   ```sql
+   ALTER TABLE orders ALTER COLUMN product_id SET NOT NULL;
+   ERROR: column "product_id" contains null values
+   ```
+
+7. Make any changes needed to avoid the error message encountered in #6.
+
+   ###### My Response:
+
+   ```sql
+   DELETE FROM orders
+    WHERE product_id IS NULL;
+    
+   ALTER TABLE orders ALTER COLUMN product_id SET NOT NULL;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   DELETE FROM orders WHERE id = 4;
+   
+   ALTER TABLE orders ALTER COLUMN product_id SET NOT NULL;
+   ```
+
+8. Create a new table called `reviews` to store the data shown below. This table should include a primary key and a reference to the `products` table.
+
+   ###### My Response:
+
+   ```sql
+   CREATE TABLE reviews (
+     id serial PRIMARY KEY,
+     product_id integer REFERENCES products (id),
+   	product varchar(25),
+   	review varchar(50)
+   );
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   CREATE TABLE reviews (
+   	id serial PRIMARY KEY,
+   	body text NOT NULL,
+   	product_id integer REFERENCES products (id)
+   );
+   ```
+
+9. Write SQL statements to insert the data shown in the table in #8.
+
+   ###### My Response:
+
+   ```sql
+   INSERT INTO reviews (body, product_id)
+   VALUES ('a little small', 1),
+   ('very round!', 1),
+   ('could have been smaller', 2);
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   INSERT INTO reviews (product_id, body) VALUES (1, 'a little small');
+   INSERT INTO reviews (product_id, body) VALUES (1, 'very round!');
+   INSERT INTO reviews (product_id, body) VALUES (2, 'could have been smaller');
+   ```
+
+10. **True** or **false**: A foreign key constraint prevents NULL values from being stored in a column.
+
+    ###### My Response:
+
+    false.
+
+    ###### LS Response:
+
+    **False**. As we saw above, foreign key columns allow NULL values. As a result, it is often necessary to use `NOT NULL` and a foreign key constraint together.
+
+---
+
+### One to Many Relationships
+
+---
+
