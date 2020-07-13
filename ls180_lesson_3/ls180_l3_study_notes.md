@@ -520,3 +520,139 @@
 
 ---
 
+* **update anomaly:** an update that makes a database inconsistent, which means that it contains more than one answer for a given question.
+* **insertion anomaly:** inability to store information in certain fields unless some other condition has been met.
+* **deletion anomaly**: the deletion of certain information that we would like to persist indefinitely when we delete other information that we have know need of.
+* **normalization:** the process of designing schema that minimizes or eliminate the possible occurrence of these anomalies. The basic procedure of normalization involves extracting data into additional tables and using foreign keys to tie it back to its associated data.
+* Recall that a **foreign key column** is a column that stores references to a primary key column elsewhere in a database. Foreign keys usually point to other tables, but there are cases where they will point to rows in the same table.
+
+#### Practice Problems
+
+1. Write a SQL statement to add the following call data to the database:
+
+   | when                | duration | first_name | last_name | number     |
+   | :------------------ | :------- | :--------- | :-------- | :--------- |
+   | 2016-01-18 14:47:00 | 632      | William    | Swift     | 7204890809 |
+
+   ###### My Response:
+
+   ```sql
+   INSERT INTO calls ("when", duration, contact_id)
+   VALUES ('2016-01-18 14:47:00', 632, 6);
+   ```
+
+   ###### LS Response:
+
+   Same.
+
+2. Write a SQL statement to retrieve the call times, duration, and first name for all calls **not** made to William Swift.
+
+   ###### My Response:
+
+   ```sql
+   SELECT "when", duration, first_name
+   	FROM calls
+    INNER JOIN contacts
+    		ON calls.contact_id = contacts.id
+    WHERE first_name <> 'William' AND last_name <> 'Swift';
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   SELECT calls.when, calls.duration, contacts.first_name
+   FROM calls INNER JOIN contacts ON calls.contact_id = contacts.id
+   WHERE (contacts.first_name || ' ' || contacts.last_name) != 'William Swift';
+   ```
+
+3. Write SQL statements to add the following call data to the database:
+
+   | when                | duration | first_name | last_name | number     |
+   | :------------------ | :------- | :--------- | :-------- | :--------- |
+   | 2016-01-17 11:52:00 | 175      | Merve      | Elk       | 6343511126 |
+   | 2016-01-18 21:22:00 | 79       | Sawa       | Fyodorov  | 6125594874 |
+
+   ###### My Response:
+
+   ```sql
+   INSERT INTO contacts (first_name, last_name, number)
+   VALUES ('Merve', 'Elk', '6343511126'),
+   ('Sawa', 'Fyodorov', '6125594874');
+   
+   INSERT INTO calls ("when", duration, contact_id)
+   VALUES ('2016-01-17 11:52:00', 175, 26),
+   ('2016-01-18 21:22:00', 79, 27);
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   INSERT INTO contacts (first_name, last_name, number) VALUES ('Merve', 'Elk', '6343511126');
+   INSERT INTO calls ("when", duration, contact_id) VALUES ('2016-01-17 11:52:00', 175, 26);
+   
+   INSERT INTO contacts (first_name, last_name, number) VALUES ('Sawa', 'Fyodorov', '612559487');
+   INSERT INTO contacts ("when", duration, contact_id) VALUES ('2016-01-18 21:22:00', 79, 27);
+   ```
+
+4. Add a constraint to **contacts** that prevents a duplicate value being added in the column `number`.
+
+   ###### My Response:
+
+   ```sql
+   ALTER TABLE contacts ADD UNIQUE number;
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   ALTER TABLE contacts ADD CONSTRAINT number_unique UNIQUE (number);
+   ```
+
+5. Write a SQL statement that attempts to insert a duplicate number for a new contact but fails. What error is shown?
+
+   ###### My Response:
+
+   ```sql
+   INSERT INTO contacts (first_name, last_name, number)
+   VALUES ('Matt', 'Johnston', '6343511126');
+   ```
+
+   Produces the following error:
+
+   ```
+   ERROR:  duplicate key value violates unique constraint "contacts_number_key"
+   DETAIL:  Key (number)=(6343511126) already exists.
+   ```
+
+   ###### LS Response:
+
+   ```sql
+   one-to-many=# INSERT INTO contacts (first_name, last_name, number) VALUES ('Nivi', 'Petrussen', '6125594874');
+   ERROR:  duplicate key value violates unique constraint "number_unique"
+   DETAIL:  Key (number)=(6125594874) already exists.
+   ```
+
+6. Why does "when" need to be quoted in many of the queries in this lesson?
+
+   ###### My Response:
+
+   Because it is a keyword.
+
+   ###### LS Response:
+
+   It is a reserved word. For a full list, see http://www.postgresql.org/docs/9.5/static/sql-keywords-appendix.html. Note that there are words on that list that are "non-reserved", which means they are allowed as table or column names but are known to the SQL parser as having a special meaning.  
+
+   As a general rule, if you get spurious parser errors for commands that contain any of the listed key words as an identifier you should try to quote the identifier to see if the problem goes away.
+
+7. Draw an entity-relationship diagram for the data we've been working with in this assignment.
+
+   ###### My Response:
+
+   See notebook.
+
+---
+
+### Extracting a 1:M Relationship From Existing Data
+
+---
+
