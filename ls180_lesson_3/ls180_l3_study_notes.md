@@ -1,5 +1,3 @@
-
-
 ##### LS180 Database Foundations > Relational Data and JOINs
 
 ---
@@ -234,7 +232,7 @@
    ```
            event        |      starts_at      |    section    | row | seat
    --------------------+---------------------+---------------+-----+------
-  Kool-Aid Man       | 2016-06-14 20:00:00 | Lower Balcony | H   |   10
+    Kool-Aid Man       | 2016-06-14 20:00:00 | Lower Balcony | H   |   10
      Kool-Aid Man       | 2016-06-14 20:00:00 | Lower Balcony | H   |   11
      Green Husk Strange | 2016-02-28 18:00:00 | Orchestra     | O   |   14
      Green Husk Strange | 2016-02-28 18:00:00 | Orchestra     | O   |   15
@@ -652,7 +650,352 @@
 
 ---
 
-### Extracting a 1:M Relationship From Existing Data
+### Many to Many Relationships
+
+---
+
+* **Many-to-many** relationships are those where there can be multiple instances on both sides of the relationship. You can think of them as one-to-many relationships that go from the first table to the second **and** from the second table to the first.
+* For two tables that have a many-to-many relationship between them, we need a third table that is responsible for storing information about the relationships between the other two. Such a table that is used to persist the state of many-to-many relationships is called a _join table_.
+
+#### Practice Problems
+
+1. Write a SQL statement that will return the following result:
+
+   ```psql
+    id |     author      |           categories
+   ----+-----------------+--------------------------------
+     1 | Charles Dickens | Fiction, Classics
+     2 | J. K. Rowling   | Fiction, Fantasy
+     3 | Walter Isaacson | Nonfiction, Biography, Physics
+   (3 rows)
+   ```
+
+   ###### My Solution:
+
+   ```sql
+   SELECT books.id, books.author, string_agg(categories.name, ', ') AS categories
+   	FROM books
+   	JOIN books_categories ON books.id = books_categories.book_id
+   	JOIN categories ON books_categories.category_id = categories.id
+    GROUP BY books.id
+    ORDER BY books.id;
+   ```
+
+   ###### LS Solution:
+
+   ```sql
+   SELECT books.id, books.author, string_agg(categories.name, ', ') AS categories
+   	FROM books
+   		INNER JOIN books_categories ON books.id = books_categories.book_id
+   		INNER JOIN categories ON books_categories.category_id = categories.id
+   	GROUP BY books.id ORDER BY books.id;
+   ```
+
+2. Write SQL statements to insert the following new books into the database. What do you need to do to ensure this data fits in the database?
+
+   | Author                        | Title                                      | Categories                               |
+   | :---------------------------- | :----------------------------------------- | :--------------------------------------- |
+   | Lynn Sherr                    | Sally Ride: America's First Woman in Space | Biography, Nonfiction, Space Exploration |
+   | Charlotte Brontë              | Jane Eyre                                  | Fiction, Classics                        |
+   | Meeru Dhalwala and Vikram Vij | Vij's: Elegant and Inspired Indian Cuisine | Cookbook, Nonfiction, South Asia         |
+
+   ###### My Solution:
+
+   I first need to insert the categories that are not already in the `categories` table.
+
+   ```sql
+   INSERT INTO categories (name)
+   VALUES ('Space Exploration'),
+   ('Cookbook'),
+   ('South Asia');
+   ```
+
+   Then I need to add the data for the additional books to the `books` table.
+
+   ```sql
+   INSERT INTO books (author, title)
+   VALUES ('Lynn Sherr', 'Sally Ride: America''s First Woman in Space'),
+   ('Charlotte Brontë', 'Jane Eyre'),
+   ('Meeru Dhalwala and Vikram Vij', 'Vij''s: Elegant and Inspired Indian Cuisine');
+   ```
+
+   Turns out I need to modify the number of characters allowed in the `title` column.
+
+   ```sql
+   ALTER TABLE books
+   ALTER COLUMN title
+    TYPE varchar(50);
+   ```
+
+   Then I need to populate the `books_categories` tables with the appropriate ids from the `books` table and the `categories` table.
+
+   ```sql
+   INSERT INTO books_categories (book_id, category_id)
+   VALUES (4, 1), (4, 5), (4, 7),
+   (5, 2), (5, 4),
+   (6, 1), (6, 8), (6, 9);
+   ```
+
+3. Write a SQL statement to add a uniqueness constraint on the combination of columns `book_id` and `category_id` of the `books_categories` table. This contraint should be a table constraint; so, it should check for uniqueness on the combination of `book_id` and `category_id` across all rows of the `books_categories` table.
+
+   ###### My Solution:
+
+   ```sql
+   CREATE UNIQUE INDEX unique_book_category_ids ON books_categories (book_id, category_id);
+   ```
+
+   ###### LS Solution:
+
+   ```sql
+   ALTER TABLE books_categories ADD UNIQUE (book_id, category_id);
+   ```
+
+4. Write a SQL statement that will return the following result:
+
+   ```psql
+         name        | book_count |                                 book_titles
+   ------------------+------------+-----------------------------------------------------------------------------
+   Biography         |          2 | Einstein: His Life and Universe, Sally Ride: America's First Woman in Space
+   Classics          |          2 | A Tale of Two Cities, Jane Eyre
+   Cookbook          |          1 | Vij's: Elegant and Inspired Indian Cuisine
+   Fantasy           |          1 | Harry Potter
+   Fiction           |          3 | Jane Eyre, Harry Potter, A Tale of Two Cities
+   Nonfiction        |          3 | Sally Ride: America's First Woman in Space, Einstein: His Life and Universe, Vij's: Elegant and Inspired Indian Cuisine
+   Physics           |          1 | Einstein: His Life and Universe
+   South Asia        |          1 | Vij's: Elegant and Inspired Indian Cuisine
+   Space Exploration |          1 | Sally Ride: America's First Woman in Space
+   ```
+
+   ###### My Solution:
+
+   ```sql
+   SELECT categories.name, count(books.title) AS book_count, string_agg(books.title, ', ') AS book_titles
+    	FROM categories
+    INNER JOIN books_categories ON categories.id = books_categories.category_id
+    INNER Join books ON books_categories.book_id = books.id
+    GROUP BY categories.name
+    ORDER BY categories.name;
+   ```
+
+   ###### LS Solution:
+
+   ```sql
+   SELECT categories.name, count(books.id) AS book_count, string_agg(books.title, ', ') AS book_titles
+   	FROM books
+   		INNER JOIN books_categories ON books.id = books_categories.book_id
+   		INNER JOIN categories ON books_categories.category_id = categories.id
+   	GROUP BY categories.name ORDER BY categories.name;
+   ```
+
+---
+
+### Converting a 1:M Relationship to a M:M Relationship
+
+---
+
+#### Practice Problems
+
+1. Import [this file](https://raw.githubusercontent.com/launchschool/sql_course_data/master/sql-and-relational-databases/relational-data-and-joins/converting-a-1m-relationship-to-a-mm-relationship/films7.sql) into a database using `psql`.
+
+   ###### My Solution:
+
+   ```psql
+   $ psql -d sql-course < films7.sql
+   ```
+
+   ###### LS Solution:
+
+   ```psql
+   $ createdb om-to-mm
+   $ psql -d om-to-mm < films7.sql
+   ```
+
+2. Write the SQL statement needed to create a join table that will allow a film to have multiple directors, and directors to have multiple films. Include an `id` column in this table, and add foreign key constraints to the other columns.
+
+   ###### My Solution:
+
+   ```sql
+   CREATE TABLE films_directors (
+   	id serial PRIMARY KEY,
+   	film_id integer REFERENCES films (id),
+   	director_id integer REFERENCES directors (id)
+   );
+   ```
+
+   ###### LS Solution:
+
+   ```sql
+   CREATE TABLE directors_films (
+   	id serial PRIMARY KEY,
+   	director_id integer REFERENCES directors (id),
+   	film_id integer REFERENCES films (id)
+   );
+   ```
+
+   Notice that the table above is named `directors_films` and not `films_directors`. The convention for naming tables in SQL is to use alphabetical order when the table name consists of more than one word.
+
+3. Write the SQL statements needed to insert data into the new join table to represent the existing one-to-many relationships.
+
+   ###### My Solution:
+
+   ```sql
+   INSERT INTO directors_films (director_id, film_id) VALUES (1, 1);
+   INSERT INTO directors_films (director_id, film_id) VALUES (2, 2);
+   INSERT INTO directors_films (director_id, film_id) VALUES (3, 3);
+   INSERT INTO directors_films (director_id, film_id) VALUES (4, 4);
+   INSERT INTO directors_films (director_id, film_id) VALUES (5, 5);
+   INSERT INTO directors_films (director_id, film_id) VALUES (6, 6);
+   INSERT INTO directors_films (director_id, film_id) VALUES (3, 7);
+   INSERT INTO directors_films (director_id, film_id) VALUES (7, 8);
+   INSERT INTO directors_films (director_id, film_id) VALUES (8, 9);
+   INSERT INTO directors_films (director_id, film_id) VALUES (4, 10);
+   ```
+
+   ###### LS Solution:
+
+   ```sql
+   INSERT INTO directors_films (film_id, director_id) VALUES (1, 1);
+   INSERT INTO directors_films (film_id, director_id) VALUES (2, 2);
+   INSERT INTO directors_films (film_id, director_id) VALUES (3, 3);
+   INSERT INTO directors_films (film_id, director_id) VALUES (4, 4);
+   INSERT INTO directors_films (film_id, director_id) VALUES (5, 5);
+   INSERT INTO directors_films (film_id, director_id) VALUES (6, 6);
+   INSERT INTO directors_films (film_id, director_id) VALUES (7, 3);
+   INSERT INTO directors_films (film_id, director_id) VALUES (8, 7);
+   INSERT INTO directors_films (film_id, director_id) VALUES (9, 8);
+   INSERT INTO directors_films (film_id, director_id) VALUES (10, 4);
+   ```
+
+4. Write a SQL statement to remove any unneeded columns from `films`.
+
+   ###### My Solution:
+
+   ```sql
+   ALTER TABLE films
+    DROP COLUMN director_id;
+   ```
+
+   ###### LS Solution:
+
+   ```sql
+   ALTER TABLE films DROP COLUMN director_id;
+   ```
+
+5. Write a SQL statement that will return the following result:
+
+   ```psql
+              title           |         name
+   ---------------------------+----------------------
+    12 Angry Men              | Sidney Lumet
+    1984                      | Michael Anderson
+    Casablanca                | Michael Curtiz
+    Die Hard                  | John McTiernan
+    Let the Right One In      | Michael Anderson
+    The Birdcage              | Mike Nichols
+    The Conversation          | Francis Ford Coppola
+    The Godfather             | Francis Ford Coppola
+    Tinker Tailor Soldier Spy | Tomas Alfredson
+    Wayne's World             | Penelope Spheeris
+   (10 rows)
+   ```
+
+   ###### My Solution:
+
+   ```sql
+   SELECT films.title, directors.name
+   	FROM films
+   	JOIN directors_films ON films.id = directors_films.film_id
+   	JOIN directors ON directors.id = directors_films.director_id
+    ORDER BY films.title;
+   ```
+
+   ###### LS Solution:
+
+   ```sql
+   SELECT films.title, directors.name
+   	FROM films
+   		INNER JOIN directors_films ON directors_films.film_id = films.id
+   		INNER JOIN directors ON directors.id = directors_films.director_id
+   	ORDER BY films.title ASC;
+   ```
+
+6. Write SQL statements to insert data for the following films into the database:
+
+   | Film                   | Year | Genre   | Duration | Directors                      |
+   | :--------------------- | :--- | :------ | :------- | :----------------------------- |
+   | Fargo                  | 1996 | comedy  | 98       | Joel Coen                      |
+   | No Country for Old Men | 2007 | western | 122      | Joel Coen, Ethan Coen          |
+   | Sin City               | 2005 | crime   | 124      | Frank Miller, Robert Rodriguez |
+   | Spy Kids               | 2001 | scifi   | 88       | Robert Rodriguez               |
+
+   ###### My Solution:
+
+   ```sql
+   INSERT INTO films (title, year, genre, duration)
+   VALUES ('Fargo', 1996, 'comedy', 98),
+   ('No Country for Old Men', 2007, 'western', 122),
+   ('Sin City', 2005, 'crime', 124),
+   ('Spy Kids', 2001, 'scifi', 88);
+   
+   INSERT INTO directors (name)
+   VALUES ('Joel Coen'),
+   ('Ethan Coen'),
+   ('Frank Miller'),
+   ('Robert Rodriguez');
+   
+   INSERT INTO directors_films (director_id, film_id)
+   VALUES (9, 11),
+   (9, 12),
+   (10, 12),
+   (11, 13),
+   (12, 13),
+   (12, 14);
+   ```
+
+   ###### LS Solution:
+
+   ```sql
+   INSERT INTO films (title, year, genre, duration) VALUES ('Fargo', 1996, 'comedy', 98);
+   INSERT INTO directors (name) VALUES ('Joel Coen');
+   INSERT INTO directors (name) VALUES ('Ethan Coen');
+   INSERT INTO directors_films (director_id, film_id) VALUES (9, 11);
+   
+   INSERT INTO films (title, year, genre, duration) VALUES ('No Country for Old Men', 2007, 'western', 122);
+   INSERT INTO directors_films (director_id, film_id) VALUES (9, 12);
+   INSERT INTO directors_films (director_id, film_id) VALUES (10, 12);
+   
+   INSERT INTO films (title, year, genre, duration) VALUES ('Sin City', 2005, 'crime', 124);
+   INSERT INTO directors (name) VALUES ('Frank Miller');
+   INSERT INTO directors (name) VALUES ('Robert Rodriguez');
+   INSERT INTO directors_films (director_id, film_id) VALUES (11, 13);
+   INSERT INTO directors_films (director_id, film_id) VALUES (12, 13);
+   
+   INSERT INTO films (title, year, genre, duration) VALUES ('Spy Kids', 2001, 'scifi', 88) RETURNING id;
+   INSERT INTO directors_films (director_id, film_id) VALUES (12, 14);
+   ```
+
+7. Write a SQL statement that determines how many films each director in the database has directed. Sort the results by number of films (greatest first) and then name (in alphabetical order).
+
+   ###### My Solution:
+
+   ```sql
+   SELECT directors.name, count(films.id) AS total_films
+   	FROM directors
+    INNER JOIN directors_films ON directors.id = directors_films.director_id
+    INNER JOIN films ON films.id = directors_films.film_id
+    GROUP BY directors.name
+    ORDER BY total_films DESC, directors.name ASC;
+   ```
+
+   ###### LS Solution:
+
+   ```sql
+   SELECT directors.name AS director, COUNT(directors_films.film_id) AS films
+   	FROM directors
+   		INNER JOIN directors_films ON directors.id = directors_films.director_id
+     GROUP BY directors.id
+     ORDER BY films DESC, directors.name ASC;
+   ```
 
 ---
 
