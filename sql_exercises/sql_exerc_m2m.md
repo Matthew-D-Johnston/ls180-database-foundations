@@ -234,5 +234,402 @@ VALUES
 
 ---
 
+Write a query to retrieve the `customer` data for every customer who currently subscribes to at least one service.
 
+###### My Solution:
+
+```sql
+SELECT DISTINCT customers.id, name, payment_token FROM customers
+ INNER JOIN customers_services
+		ON customers.id = customers_services.customer_id;
+```
+
+###### LS Solution:
+
+```sql
+SELECT DISTINCT customers.* FROM customers
+INNER JOIN customers_services
+				ON customer_id = customers.id;
+```
+
+---
+
+### 3. Get Customers With No Services
+
+---
+
+Write a query to retrieve the `customer` data for every customer who does not currently subscribe to any services.
+
+###### My Solution:
+
+```sql
+SELECT * FROM customers
+ WHERE customers.id NOT IN (SELECT customer_id FROM customers_services);
+```
+
+###### LS Solution:
+
+```sql
+SELECT customers.* FROM customers
+LEFT OUTER JOIN customers_services
+						 ON customer_id = customers.id
+					WHERE service_id IS NULL;
+```
+
+##### Further Exploration
+
+Can you write a query that displays all customers with no services and all services that currently don't have any customers? The output should look like this:
+
+```psql
+ id |     name      | payment_token | id |     description     | price
+----+---------------+---------------+----+---------------------+--------
+  2 | Nancy Monreal | JKWQPJKL      |    |                     |
+    |               |               |  8 | One-to-one Training | 999.00
+(2 rows)
+```
+
+###### My Solution:
+
+```sql
+SELECT customers.*, services.*
+	FROM customers
+  FULL OUTER JOIN customers_services ON customers.id = customers_services.customer_id
+  FULL OUTER JOIN services ON services.id = customers_services.service_id
+  WHERE service_id IS NULL OR customer_id IS NULL;
+```
+
+---
+
+### 4. Get Services With No Customers
+
+---
+
+Using RIGHT OUTER JOIN, write a query to display a list of all services that are not currently in use. Your output should look like this:
+
+```plaintext
+ description
+-------------
+ One-to-one Training
+(1 row)
+```
+
+###### My Solution:
+
+```sql
+SELECT description FROM customers_services
+ RIGHT OUTER JOIN services
+ 		ON services.id = customers_services.service_id
+ WHERE customer_id IS NULL;
+```
+
+###### LS Solution:
+
+```sql
+SELECT description FROM customers_services
+ RIGHT OUTER JOIN services
+ 							 ON services.id = service_id
+ WHERE service_id IS NULL;
+```
+
+---
+
+### 5. Services for Each Customer
+
+---
+
+Write a query to display a list of all customer names together with a comma-separated list of the services they use. Your output should look like this:
+
+```plaintext
+     name      |                                services
+---------------+-------------------------------------------------------------------------
+ Pat Johnson   | Unix Hosting, DNS, Whois Registration
+ Nancy Monreal |
+ Lynn Blake    | DNS, Whois Registration, High Bandwidth, Business Support, Unix Hosting
+ Chen Ke-Hua   | High Bandwidth, Unix Hosting
+ Scott Lakso   | DNS, Dedicated Hosting, Unix Hosting
+ Jim Pornot    | Unix Hosting, Dedicated Hosting, Bulk Email
+(6 rows)
+```
+
+###### My Solution:
+
+```sql
+SELECT customers.name, string_agg(services.description, ', ') AS services
+	FROM customers
+  LEFT OUTER JOIN customers_services ON customers.id = customers_services.customer_id
+  LEFT OUTER JOIN services ON services.id = customers_services.service_id
+ GROUP BY customers.name;
+```
+
+###### LS Solution:
+
+```sql
+SELECT customers.name
+			 string_agg(services.description, ', ') AS services
+	FROM customers
+	LEFT OUTER JOIN customers_services
+							 ON customer_id = customers.id
+	LEFT OUTER JOIN services
+							 ON services.id = service_id
+	GROUP BY customers.id;
+```
+
+##### Further Exploration
+
+Can you modify the above command so the output looks like this?
+
+```psql
+     name      |    description
+---------------+--------------------
+ Chen Ke-Hua   | High Bandwidth
+               | Unix Hosting
+ Jim Pornot    | Dedicated Hosting
+               | Unix Hosting
+               | Bulk Email
+ Lynn Blake    | Whois Registration
+               | High Bandwidth
+               | Business Support
+               | DNS
+               | Unix Hosting
+ Nancy Monreal |
+ Pat Johnson   | Whois Registration
+               | DNS
+               | Unix Hosting
+ Scott Lakso   | DNS
+               | Dedicated Hosting
+               | Unix Hosting
+(17 rows)
+```
+
+This won't be easy! Hint: you will need to use the [window lag function](https://www.postgresql.org/docs/9.5/static/functions-window.html) together with a [CASE condition](https://www.postgresql.org/docs/9.5/static/functions-conditional.html) in your `SELECT`. To get you started, try this command:
+
+```sql
+SELECT customers.name,
+       lag(customers.name)
+         OVER (ORDER BY customers.name)
+         AS previous,
+       services.description
+FROM customers
+LEFT OUTER JOIN customers_services
+             ON customer_id = customers.id
+LEFT OUTER JOIN services
+             ON services.id = service_id;
+```
+
+Examine the relationship between the `previous` column and the rest of the table to get a handle on what `lag` does.
+
+###### My Solution:
+
+```sql
+SELECT CASE lag(customers.name) OVER (ORDER BY customers.name)
+					WHEN customers.name THEN NULL
+					ELSE customers.name
+        END,
+       services.description
+FROM customers
+LEFT OUTER JOIN customers_services
+             ON customer_id = customers.id
+LEFT OUTER JOIN services
+             ON services.id = service_id;
+```
+
+It worked!
+
+---
+
+### 6. Services With At Least 3 Customers
+
+---
+
+Write a query that displays the description for every service that is subscribed to by at least 3 customers. Include the customer count for each description in the report. The report should look like this:
+
+```plaintext
+ description  | count
+--------------+-------
+ DNS          |     3
+ Unix Hosting |     5
+(2 rows)
+```
+
+###### My Solution:
+
+```sql
+SELECT services.description, count(customer_id)
+	FROM services
+ INNER JOIN customers_services ON customers_services.service_id = services.id
+ INNER JOIN customers ON customers.id = customers_services.customer_id
+ GROUP BY services.description
+ HAVING count(customer_id) >= 3;
+ 
+-- or...
+
+SELECT s.description, count(cs.customer_id)
+	FROM services AS s
+ INNER JOIN customers_services AS cs ON cs.service_id = s.id
+ INNER JOIN customers AS c ON c.id = cs.customer_id
+ GROUP BY s.description
+ HAVING count(customer_id) >= 3;
+```
+
+###### LS Solution:
+
+```sql
+SELECT description, COUNT(service_id)
+FROM services
+INNER JOIN customers_services
+						 ON services.id = service_id
+GROUP BY description
+HAVING COUNT(customers_services.customer_id) >= 3
+ORDER BY description;
+```
+
+---
+
+### 7. Total Gross Income
+
+---
+
+Assuming that everybody in our database has a bill coming due, and that all of them will pay on time, write a query to compute the total gross income we expect to receive.
+
+Answer:
+
+```psql
+  gross
+ --------
+ 678.50
+(1 row)
+```
+
+###### My Solution:
+
+```sql
+SELECT sum(services.price * service_count.count) AS gross
+	FROM (SELECT service_id, count(service_id) FROM customers_services GROUP BY service_id)
+		AS service_count
+ INNER JOIN services ON services.id = service_count.service_id;
+```
+
+###### LS Solution
+
+```sql
+SELECT SUM(price) as gross
+FROM services
+INNER JOIN customers_services
+				ON service_id = services.id;
+```
+
+---
+
+### 8. Add New Customer
+
+---
+
+A new customer, 'John Doe', has signed up with our company. His payment token is 'EYODHLCN'. Initially, he has signed up for UNIX hosting, DNS, and Whois Registration. Create any SQL statement(s) needed to add this record to the database.
+
+###### My Solution:
+
+```sql
+INSERT INTO customers (name, payment_token) VALUES ('John Doe', 'EYODHLCN');
+
+INSERT INTO customers_services (customer_id, service_id) 
+VALUES (7, 1),
+(7, 2),
+(7, 3);
+```
+
+###### LS Solution:
+
+Same.
+
+---
+
+### 9. Hypothetically
+
+---
+
+The company president is looking to increase revenue. As a prelude to his decision making, he asks for two numbers: the amount of expected income from "big ticket" services (those services that cost more than $100) and the maximum income the company could achieve if it managed to convince all of its customers to select all of the company's big ticket items.
+
+For simplicity, your solution should involve two separate SQL queries: one that reports the current expected income level, and one that reports the hypothetical maximum. The outputs should look like this:
+
+```psql
+ sum
+--------
+ 500.00
+(1 row)
+```
+
+```psql
+   sum
+---------
+ 10493.00
+(1 row)
+```
+
+###### My Solution:
+
+Expected Income from "Big Ticket" Service Items:
+
+```sql
+SELECT sum(price)
+	FROM services
+ INNER JOIN customers_services ON services.id = customers_services.service_id
+ WHERE price > 100.00;
+```
+
+If All Customers Selected All of the Company's Big Ticket Items:
+
+```sql
+SELECT (SELECT count(id) FROM customers) * sum(price) AS sum
+	FROM services
+ WHERE price > 100;
+```
+
+###### LS Solution:
+
+```sql
+SELECT SUM(price)
+FROM services
+INNER JOIN customers_services
+				ON services.id = service_id
+WHERE price > 100;
+
+SELECT sum(price)
+FROM customers
+CROSS JOIN services
+WHERE price > 100;
+```
+
+---
+
+### 10. Deleting Rows
+
+---
+
+Write the necessary SQL statements to delete the "Bulk Email" service and customer "Chen Ke-Hua" from the database.
+
+###### My Solution:
+
+```sql
+DELETE FROM customers_services
+ WHERE service_id = 7 OR customer_id = 4;
+
+DELETE FROM services
+ WHERE description = 'Bulk Email';
+
+DELETE FROM customers
+ WHERE name = 'Chen Ke-Hua';
+```
+
+###### LS Solution:
+
+```sql
+DELETE FROM customers_services
+WHERE service_id = 7;
+
+DELETE FROM services
+WHERE description = 'Bulk Email';
+
+DELETE FROM customers
+WHERE name = 'Chen Ke-Hua';
+```
 
