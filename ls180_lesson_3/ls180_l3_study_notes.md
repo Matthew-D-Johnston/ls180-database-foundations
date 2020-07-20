@@ -999,3 +999,180 @@
 
 ---
 
+### Summary
+
+---
+
+* _Relational databases_ are called relational because they persist data in a set of _relations_, or, as they are more commonly called, _tables_.
+* A _relationship_ is a connection between entity instances, or rows of data, usually resulting from a relationship between what those rows of data represent.
+* The three levels of schema are _conceptual_, _logical_, and _physical_.
+* The three types of relationships are _one to one_, _one to many_, and _many to many_.
+* A _conceptual schema_ is a high-level design focused on identifying entities and their relationships.
+* A _physical schema_ is a low-level database-specific design focused on implementation.
+* _Cardinality_ is the number of objects on each side of the relationship.
+* The _modality_ of a relationship indicates if that relationship is required or not.
+* _Referential integrity_ is a data property that requires every value in one column of a table to appear in a column of (usually) another table.
+
+#### Exercises
+
+Before you move on, take some time to work through the [LS180 - SQL Fundamentals exercises](https://launchschool.com/exercises#ls180_sql_fundamentals) from the *DDL (Data Definition Lanugage)*, *DML (Data Manipulation Language)*, and *Medium: Many to Many* exercise sets.
+
+---
+
+#### DDL (Data Definition Language)
+
+##### 1. Create an Extrasolar Planetary Database
+
+```sql
+$ createdb extrasolar
+$ psql -d extrasolar
+
+CREATE TABLE stars (
+	id serial PRIMARY KEY,
+	name varchar(25) UNIQUE NOT NULL,
+	distance integer NOT NULL CHECK (distance > 0),
+	spectral_type char(1),
+	companions integer NOT NULL CHECK (companions >= 0)
+);
+
+CREATE TABLE planets (
+	id serial PRIMARY KEY,
+	designation char(1),
+	mass integer
+);
+```
+
+##### 2. Relating Stars and Planets
+
+```sql
+ALTER TABLE planets
+	ADD COLUMN star_id integer NOT NULL REFERENCES stars (id); 
+```
+
+##### 3. Increase Star Name Length
+
+```sql
+ALTER TABLE stars
+ALTER COLUMN name TYPE varchar(50);
+```
+
+##### 4. Stellar Distance Precision
+
+```sql
+ALTER TABLE stars
+ALTER COLUMN distance TYPE numeric;
+```
+
+##### 5. Check Values in List
+
+```sql
+ALTER TABLE stars
+ALTER COLUMN spectral_type 
+	SET NOT NULL;
+
+ALTER TABLE stars
+	ADD CHECK (spectral_type IN ('O', 'B', 'A', 'F', 'G', 'K', 'M'));
+```
+
+##### 6. Enumerated Types
+
+```sql
+ALTER TABLE stars
+ DROP CONSTRAINT stars_spectral_type_check;
+ 
+CREATE TYPE spectral_type_values AS ENUM ('O', 'B', 'A', 'F', 'G', 'K', 'm');
+
+ALTER TABLE stars
+ALTER COLUMN spectral_type TYPE spectral_type_values USING spectral_type::spectral_type_values;
+```
+
+##### 7. Planetary Mass Precision
+
+```sql
+ALTER TABLE planets
+	ADD CHECK (mass >= 0),
+ALTER COLUMN mass TYPE numeric,
+ALTER COLUMN mass SET NOT NULL,
+ALTER COLUMN designation SET NOT NULL;
+```
+
+##### 8. Add a Semi-Major Axis Column
+
+```sql
+ALTER TABLE planets
+	ADD COLUMN semi_major_axis numeric NOT NULL;
+```
+
+##### 9. Add a Moons Table
+
+```sql
+CREATE TABLE moons (
+	id serial PRIMARY KEY,
+	designation integer NOT NULL CHECK (designation > 0),
+	semi_major_axis numeric CHECK (semi_major_axis > 0.0),
+	mass numeric CHECK(mass > 0.0),
+  planet_id integer NOT NULL REFERENCES planets (id)
+);
+```
+
+##### 10. Delete the Database
+
+```sql
+$ pg_dump --inserts extrasolar > extrasolar.dump.sql
+
+\c other_database
+DROP DATABASE extrasolar;
+```
+
+---
+
+#### DML (Data Manipulation Language
+
+##### 1. Set Up Database
+
+```sql
+CREATE DATABASE workshop;
+
+CREATE TABLE devices (
+	id serial PRIMARY KEY,
+	name text NOT NULL,
+	created_at timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE parts (
+	id serial PRIMARY KEY,
+	part_number integer UNIQUE NOT NULL,
+	device_id integer REFERENCES devices (id)
+);
+```
+
+##### 2. Insert Data for Parts and Devices
+
+```sql
+INSERT INTO devices (name) VALUES ('Accelerometer'), ('Gyroscope');
+
+INSERT INTO parts (part_number, device_id)
+VALUES (12, 1),
+(14, 1),
+(16, 1),
+(31, 2),
+(33, 2),
+(35, 2),
+(37, 2),
+(39, 2),
+(50, NULL),
+(54, NULL),
+(58, NULL);
+```
+
+##### 3. INNER JOIN
+
+```sql
+SELECT d.name, p.part_number
+	FROM devices AS d
+ INNER JOIN parts AS p
+ 		ON d.id = p.device_id;
+```
+
+##### 4. SELECT part_numer
+
