@@ -1126,7 +1126,7 @@ DROP DATABASE extrasolar;
 
 ---
 
-#### DML (Data Manipulation Language
+#### DML (Data Manipulation Language)
 
 ##### 1. Set Up Database
 
@@ -1175,4 +1175,222 @@ SELECT d.name, p.part_number
 ```
 
 ##### 4. SELECT part_numer
+
+```sql
+SELECT * FROM parts
+ WHERE parts.part_number::text LIKE '3%';
+```
+
+##### 5. Aggregate Functions
+
+```sql
+SELECT devices.name, count(parts.part_number)
+	FROM devices
+	JOIN parts ON devices.id = parts.device_id
+ GROUP BY devices.name;
+```
+
+##### 6. ORDER BY
+
+```sql
+SELECT devices.name, count(parts.device_id)
+	FROM devices
+	JOIN parts ON devices.id = parts.device_id
+ GROUP BY devices.name
+ ORDER BY devices.name DESC;
+```
+
+##### 7. IS NULL and IS NOT NULL
+
+```sql
+SELECT part_number, device_id FROM parts
+ WHERE device_id IS NOT NULL;
+ 
+SELECT part_number, device_id FROM parts
+ WHERE device_id IS NULL;
+```
+
+##### 8. Oldest Device
+
+```sql
+SELECT name FROM devices
+ ORDER BY age(created_at) DESC
+ LIMIT 1;
+ 
+SELECT name FROM devices
+ ORDER BY created_at ASC
+ LIMIT 1;
+```
+
+##### 9. UPDATE device_id
+
+```sql
+UPDATE parts
+	 SET device_id = 1
+ WHERE part_number IN (37, 39);
+ 
+UPDATE parts
+	 SET device_id = 2
+ WHERE part_number = min(part_number);
+```
+
+##### 10. Delete Accelerometer
+
+```sql
+DELETE FROM parts
+ WHERE device_id = 1;
+ 
+DELETE FROM devices
+ WHERE name = 'Accelerometer';
+```
+
+---
+
+#### Medium: Many to Many
+
+##### 1. Set Up Database
+
+```sql
+CREATE DATABASE billing;
+
+\c billing
+
+CREATE TABLE customers (
+	id serial PRIMARY KEY,
+	name text NOT NULL,
+	payment_token char(8) NOT NULL CHECK (payment_token ~ '^[A-Z]{8}$')
+);
+
+CREATE TABLE services (
+	id serial PRIMARY KEY,
+	description text NOT NULL,
+	price numeric(10, 2) NOT NULL CHECK (price >= 0.00)
+);
+
+INSERT INTO customers (name, payment_token)
+VALUES ('Pat Johnson', 'XHGOAHEQ'),
+('Nancy Monreal', 'JKWQPJKL'),
+('Lynn Blake', 'KLZXWEEE'),
+('Chen Ke-Hua', 'KWETYCVX'),
+('Scott Lakso', 'UUEAPQPS'),
+('Jim Pornot', 'XKJEYAZA');
+
+INSERT INTO services (description, price)
+VALUES ('Unix Hosting', 5.95),
+('DNS', 4.95),
+('Whois Registration', 1.95),
+('High Bandwidth', 15.00),
+('Business Support', 250.00),
+('Dedicated Hosting', 50.00),
+('Bulk Email', 250.00),
+('One-to-one Training', 999.00);
+
+CREATE TABLE customers_services (
+	id serial PRIMARY KEY,
+	customer_id integer REFERENCES customers (id) ON DELETE CASCADE,
+	service_id integer REFERENCES services (id),
+  CONSTRAINT unique_data UNIQUE (customer_id, service_id)
+);
+
+INSERT INTO customers_services (customer_id, service_id)
+VALUES (1, 1),
+(1, 2),
+(1, 3),
+(3, 1),
+(3, 2),
+(3, 3),
+(3, 4),
+(3, 5),
+(4, 1),
+(4, 4),
+(5, 1),
+(5, 2),
+(5, 6),
+(6, 1),
+(6, 6),
+(6, 7);
+
+ALTER TABLE customers
+	ADD UNIQUE (payment_token);
+	
+ALTER TABLE customers_services
+ALTER COLUMN customer_id
+	SET NOT NULL,
+ALTER COLUMN service_id
+	SET NOT NULL;
+```
+
+##### 2. Get Customers With Services
+
+Write a query to retrieve the `customer` data for every customer who currently subscribes to at least one service.
+
+```sql
+SELECT DISTINCT customers.* FROM customers
+ INNER JOIN customers_services ON customers.id = customers_services.customer_id;
+```
+
+##### 3. Get Customers With No Services
+
+```sql
+SELECT c.* FROM customers AS c
+	LEFT OUTER JOIN customers_services AS cs
+		ON cs.customer_id = c.id
+ WHERE cs.customer_id IS NULL;
+ 
+SELECT c.*, s.* FROM customers AS c
+ 	FULL JOIN customers_services AS cs
+ 		ON cs.customer_id = c.id
+ 	FULL JOIN services AS s
+ 		ON cs.service_id = s.id
+ 		WHERE cs.customer_id IS NULL OR cs.service_id IS NULL;
+```
+
+##### 4. Get Services With No Customers
+
+```sql
+SELECT s.description FROM customers_services AS cs
+ RIGHT OUTER JOIN services AS s
+ 		ON cs.service_id = s.id
+ WHERE cs.service_id is NULL;
+```
+
+##### 5. Services for each Customer
+
+```sql
+SELECT c.name, string_agg(s.description, ', ') AS services
+	FROM customers AS c
+	LEFT OUTER JOIN customers_services AS cs
+		ON cs.customer_id = c.id
+	LEFT OUTER JOIN services AS s
+		ON cs.service_id = s.id
+ GROUP BY c.name;
+```
+
+##### 6. Services With At Least 3 Customers
+
+```sql
+SELECT s.description, count(c.id)
+	FROM customers AS c
+	JOIN customers_services AS cs
+		ON cs.customer_id = c.id
+	JOIN services AS s
+		ON cs.service_id = s.id
+ GROUP BY s.description
+ HAVING count(c.id) >= 3;
+```
+
+##### 7. Total Gross Income
+
+```sql
+SELECT sum(services.price) AS gross
+	FROM services
+ INNER JOIN customers_services
+ 		ON customers_services.service_id = services.id;
+```
+
+##### 8. Add New Customer
+
+```sql
+
+```
 
