@@ -1391,6 +1391,36 @@ SELECT sum(services.price) AS gross
 ##### 8. Add New Customer
 
 ```sql
+INSERT INTO customers (name, payment_token) VALUES ('John Doe', 'EYODHLCN');
 
+INSERT INTO customers_services (customer_id, service_id)
+VALUES (7, 1),
+(7, 2),
+(7, 3);
+```
+
+##### 9. Hypothetically
+
+```sql
+SELECT sum(price) FROM customers_services
+ INNER JOIN services ON customers_services.service_id = services.id
+ WHERE price > 100.00;
+ 
+SELECT sum(price) FROM services
+ CROSS JOIN customers
+ WHERE price > 100.00;
+```
+
+##### 10. Deleting Rows
+
+```sql
+DELETE FROM customers_services
+ WHERE service_id = 7 OR customer_id = 4;
+
+DELETE FROM customers
+ WHERE name = 'Chen Ke-Hua';
+
+DELETE FRom services
+ WHERE description = 'Bulk Email';
 ```
 
