@@ -99,7 +99,7 @@
 
 * The cost values are calculated using arbitrary units determined by the planner's cost parameters, and represent the estimated amount of effort or resources required to execute the query as planned. Understanding cost parameters is beyond the scope of this course, but is explained in detail in the [PostgreSQL documentation](https://www.postgresql.org/docs/current/runtime-config-query.html#RUNTIME-CONFIG-QUERY-CONSTANTS).
 
-* The output for amore complex query would have more nodes:
+* The output for a more complex query would have more nodes:
 
   ```sql
   EXPLAIN SELECT books.title FROM books
