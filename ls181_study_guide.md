@@ -32,41 +32,106 @@
 ##### Name and define the three sublanguages of SQL and be able to classify different statements by sublanguage.
 
 * **Data Definition Language (DDL)**: used to define the structure, or schema, of a database and the tables and columns within it.
+  * **controls**: relation structure and rules.
+  * **SQL Constructs:** `CREATE`, `DROP`, `ALTER`.
+  * The _data definition_ parts of SQL are what allow a user to create and modify the schema stored within a database. It includes **CREATE TABLE, ALTER TABLE, ADD COLUMN**, and several other statements for creating or modifying the structure of or rules that govern the data that is held within a database.
 * **Data Manipulation Language (DML):** used to retrieve or modify data stored in a database. `SELECT` queries are part of DML.
   * DML statements can be categorized into four different types:
     1. `INSERT` statements: these add new data into a database table.
     2. `SELECT` statements: also referred to as Queries; these retrieve existing data from database tables.
     3. `UPDATE` statements: these update existing data in a database table.
     4. `DELETE` statements: these delete existing data from a database table.
+  * **controls:** values stored within relations.
+  * **SQL Constructs:** `SELECT`, `INSERT`, `UPDATE`, `DELETE`.
+  * This part of the SQL language is what allows a user to retrieve or modify the data stored within a database. Some databases consider the retrieval and manipulation as two separate languages themselves, but PostgreSQL's documentation combines them and accordingly, we will as well.
 * **Data Control Language (DCL):** used to determine what various users are allowed to do when interacting with a database.
+  * **controls:** who can do what.
+  * **SQL Constructs:** `GRANT`, `REVOKE`.
+  * **DCL** is tasked with controlling the rights and access roles of the users interacting with a database or table. We aren't going to spend much time on this part of SQL in this course since most databases you'll be working with will utilize a database user that has complete control of and access to a database, its schema, and its data. You may work on a project at some point where this isn't the case, but what that usually looks like is that you have been granted read-only access and can only use `SELECT` statements.
 
 ##### Write SQL statements using INSERT, UPDATE, DELETE, CREATE/ALTER/DROP TABLE, ADD/ALTER/DROP COLUMN.
 
 ##### Understand how to use GROUP BY, ORDER BY, WHERE, and HAVING.
 
+* `HAVING` conditions are very similar to `WHERE` conditions, only they are applied to the values that are used to create groups and not individual rows. This means that a column that is mentioned in a `HAVING` clause should almost always appear in a `GROUP BY` clause and/or an aggregate function in the same query. Both `GROUP BY` and aggregate functions perform grouping, and the `HAVING` clause is used to filter that aggregated/grouped data.
+
 ### PostgreSQL
 
 ##### Describe what a sequence is and what they are used for.
+
+* A **sequence** is a special kind of relation that generates a series of numbers. A sequence will remember the last number it generated, so it will generate numbers in a predetermined sequence automatically.
+
+* To create a sequence:
+
+  ```sql
+  CREATE SEQUENCE sequence_name;
+  ```
 
 ##### Create an auto-incrementing column.
 
 * Use datatype `serial`.
 
+* It turns out that **serial** columns in PostgreSQL are actually a short-hand for a column definition that is much longer:
+
+  ```sql
+  -- This statement:
+  CREATE TABLE colors (id serial, name text);
+  
+  -- is actually interpreted as if it were this one:
+  CREATE SEQUENCE colors_id_seq;
+  CREATE TABLE colors (
+  		id integer NOT NULL DEFAULT nextval('colors_id_seq'),
+  		name text
+  );
+  ```
+
 ##### Define a default value for a column.
 
 * Use the `DEFAULT` keyword followed by the default value.
+
+* When first creating a table, the `DEFAULT` keyword is placed after the column's datatype.
+
+* When adding a default constraint after a column has been created, use the following:
+
+  ```sql
+  ALTER TABLE table_name
+  ALTER COLUMN column_name
+  SET DEFAULT default_value;
+  ```
 
 ##### Be able to describe what primary, foreign, natural, and surrogate keys are.
 
 * **Primary Key:** 
   * A unique identifier for a row of data. 
+  
   * Making a column a `PRIMARY KEY` is essentially equivalent to adding `NOT NULL` and `UNIQUE` constraints to that column.
+  
+  * By specifying `PRIMARY KEY` (in a similar way to how we would specify `NOT NULL`), PostgreSQL will create an index on that column that enforces it holding unique values in addition to preventing the column from holding NULL values. For the most part, this code:
+  
+    ```sql
+    CREATE TABLE more_colors (id int PRIMARY KEY, name text);
+    ```
+  
+  *  is the same as:
+  
+    ```sql
+    CREATE TABLE more_colors (id int NOT NULL UNIQUE, name text);
+    ```
+  
+  * The difference between the two is documenting your intention as a database designer. By using `PRIMARY KEY`, the fact that a certain column can be relied upon as a way to identify specific rows is baked into the table's schema.
+
 * **Foreign Key:**
   * Allows us to associate a row in one table to a row in another table, which is done by setting a column in one table as a Foreign Key that references another table's Primary Key column.
   * Creating this relationship is done using the `REFERENCES` keyword.
   * With a `CREATE TABLE` statement we can specify a foreign key with the following command: `FOREIGN KEY (fk_column_name) REFERENCES target_table_name (pk_col_name);`.
 * **Natural Key:**
-* **Surrogate Key:** 
+  * A **natural key** is an existing value in a dataset that can be used to uniquely identify each row of data in that dataset. On the surface there appear to be a lot of values that _might_ be satisfactory for this use: a person's phone number, email address, social security number, or a product number.
+  * However, in reality most values that _seem_ like they are good candidates for natural keys turn out to not be. A phone number and email address can change hands. A social security number shoudn't change but only some people have them. And products often go through multiple revisions while retaining the same product number.
+  * There are a variety of solutions to these problems, including using more than one existing value together as a **composite key**. But instead of solving the problems associated with natural keys, this will often just defer the problem until later without actually addressing it.
+  * Luckily for database users everywhere, there is another option--surrogate keys.
+* **Surrogate Key:**
+  * A **surrogate key** is a value that is created solely for the purpose of identifying a row of data in a database table. Because it is created specifically for that purpose, it can avoid many of the problems associated with natural keys.
+  * Perhaps the most common surrogate key in use today is an auto-incrementing integer. This is a value that is added to each row in a table as it is created. With each row, this value increases in order to remain unique in each row.
 
 ##### Create and remove CHECK constraints from a column.
 
