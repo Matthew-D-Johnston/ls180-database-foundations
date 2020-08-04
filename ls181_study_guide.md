@@ -121,15 +121,48 @@
   * The difference between the two is documenting your intention as a database designer. By using `PRIMARY KEY`, the fact that a certain column can be relied upon as a way to identify specific rows is baked into the table's schema.
 
 * **Foreign Key:**
+  
   * Allows us to associate a row in one table to a row in another table, which is done by setting a column in one table as a Foreign Key that references another table's Primary Key column.
+  
   * Creating this relationship is done using the `REFERENCES` keyword.
+  
   * With a `CREATE TABLE` statement we can specify a foreign key with the following command: `FOREIGN KEY (fk_column_name) REFERENCES target_table_name (pk_col_name);`.
+  
+  * In database parlance, a _foreign key_ can refer to two different, but related, things:
+  
+    * A column that represents a relationship between two rows by pointing to a specific row in another table using its _primary key_. A complete name for these columns is _foreign key column_. To create a foreign key _column_, just create a column of the same type as the primary key column it will point to. If the primary key column uses the `integer` data type then the foreign key column must also be of type `integer`.
+  
+    * A constraint that enforces certain rules about what values are permitted in these foreign key relationships. A complete name for this type of constraint is _foreign key constraint_. To create a foreign key _constraint_, there are two syntaxes that can be used. The first is to add a `REFERENCES` clause to the description of a column in a `CREATE TABLE` statement:
+  
+      ```sql
+      CREATE TABLE orders (
+      	id serial PRIMARY KEY,
+      	product_id integer REFERENCES products (id),-- this line creates the constraint
+      	quantity integer NOT NULL
+      );
+      ```
+  
+      The second way is to add the foreign key constraint separately, just as you would any other constraint (note the use of `FOREIGN KEY` instead of `CHECK`):
+  
+      ```sql
+      ALTER TABLE orders 
+      	ADD CONSTRAINT orders_product_id_fkey 
+      	FOREIGN KEY (product_id) REFERENCES products(id);
+      ```
+  
+      
+  
+  * 
+  
 * **Natural Key:**
+
   * A **natural key** is an existing value in a dataset that can be used to uniquely identify each row of data in that dataset. On the surface there appear to be a lot of values that _might_ be satisfactory for this use: a person's phone number, email address, social security number, or a product number.
   * However, in reality most values that _seem_ like they are good candidates for natural keys turn out to not be. A phone number and email address can change hands. A social security number shoudn't change but only some people have them. And products often go through multiple revisions while retaining the same product number.
   * There are a variety of solutions to these problems, including using more than one existing value together as a **composite key**. But instead of solving the problems associated with natural keys, this will often just defer the problem until later without actually addressing it.
   * Luckily for database users everywhere, there is another option--surrogate keys.
+
 * **Surrogate Key:**
+
   * A **surrogate key** is a value that is created solely for the purpose of identifying a row of data in a database table. Because it is created specifically for that purpose, it can avoid many of the problems associated with natural keys.
   * Perhaps the most common surrogate key in use today is an auto-incrementing integer. This is a value that is added to each row in a table as it is created. With each row, this value increases in order to remain unique in each row.
 
@@ -189,6 +222,9 @@
 ##### Define cardinality and modality
 
 * **cardinality:**
+  * The number of objects on each side of the relationship (1:1, 1:M, M:M).
+  * 
 * **modality:** 
+  * Indicates whether the relationship is required (1) or optional (0).
 
 ##### Be able to draw database diagrams using crow's foot notation.
