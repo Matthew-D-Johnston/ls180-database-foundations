@@ -128,6 +128,8 @@
   
   * With a `CREATE TABLE` statement we can specify a foreign key with the following command: `FOREIGN KEY (fk_column_name) REFERENCES target_table_name (pk_col_name);`.
   
+  * Note that foreign keys don't receive the `NOT NULL` constraint automatically.
+  
   * In database parlance, a _foreign key_ can refer to two different, but related, things:
   
     * A column that represents a relationship between two rows by pointing to a specific row in another table using its _primary key_. A complete name for these columns is _foreign key column_. To create a foreign key _column_, just create a column of the same type as the primary key column it will point to. If the primary key column uses the `integer` data type then the foreign key column must also be of type `integer`.
@@ -149,10 +151,6 @@
       	ADD CONSTRAINT orders_product_id_fkey 
       	FOREIGN KEY (product_id) REFERENCES products(id);
       ```
-  
-      
-  
-  * 
   
 * **Natural Key:**
 
@@ -215,15 +213,12 @@
   ADD FOREIGN KEY (fk_column_name) REFERENCES other_table (other_table_pk);
   ```
 
-* 
-
 ### Database Diagrams
 
 ##### Define cardinality and modality
 
 * **cardinality:**
   * The number of objects on each side of the relationship (1:1, 1:M, M:M).
-  * 
 * **modality:** 
   * Indicates whether the relationship is required (1) or optional (0).
 
